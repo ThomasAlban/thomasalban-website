@@ -200,9 +200,30 @@ Keep provider sending quotas and alerting as additional protection.
   or account-specific login throttling. The mandatory independent nginx gate and
   shared budgets above protect production admin; test gate rotation/recovery access.
   Do not treat robots.txt, an obscure URL or CSRF as brute-force protection.
-- Forms have honeypot and per-session cooldown plus nginx's shared POST budget.
-  Fresh sessions evade the session cooldown, not the shared budget. Agree provider
-  sending quotas/alerts and further edge abuse controls if traffic warrants them.
+- Forms have a honeypot, a 60-second per-session cooldown, nginx's shared POST
+  budget, and a persistent database-backed sending budget shared by contact and
+  all composition enquiries. It admits at most 5 send attempts per 10-minute
+  window (starting with the first admitted attempt) and 30 per UTC calendar day.
+  Short windows reset when the next attempt arrives after 10 minutes, so bursts
+  can occur on either side of a window boundary. Daily capacity resets at midnight
+  UTC, but that does not bypass an active short-window limit. Failed SMTP sends
+  consume capacity too; invalid forms, honeypots and session-cooldown rejections
+  do not. Reservations use one conditional database update before SMTP; missing
+  budget rows or database errors fail closed. Migration `core.0005` seeds the
+  singleton row. Do not delete/reset it or restore an older database to regain
+  capacity: that loses sending history. App restarts and fresh sessions do not
+  reset it. No IP addresses, email addresses or form content are stored by this
+  limiter, and forwarded-IP headers are not trusted.
+- Resend's free transactional plan currently allows 100 emails per UTC day and
+  3,000 per month across SMTP/API. A 30/day website cap allows at most 930 attempts
+  in a 31-day month, leaving headroom. This only budgets website enquiries, not
+  other apps, inbound emails or other usage on the same Resend account. Confirm
+  current quotas at https://resend.com/docs/knowledge-base/account-quotas-and-limits
+  and enable provider usage alerts. Delivery errors and limit rejections apologise
+  and offer a direct `mailto:thomasalbanmusic@gmail.com` alternative. A site-wide
+  budget protects the mail allowance, not visitor fairness: an attacker could
+  exhaust it and temporarily block legitimate enquiries. Keep nginx/edge abuse
+  controls; this is not protection against a large denial-of-service attack.
   If adding an external proxy, revisit the trust boundary rather
   than accepting client-supplied forwarding headers. Do not log form bodies,
   credentials or cookies; nginx logs omit query strings, but paths/edge IPs remain.
@@ -222,6 +243,55 @@ Keep provider sending quotas and alerting as additional protection.
   Run live Lighthouse/accessibility checks. Verify canonicals and `/robots.txt`,
   submit `https://thomasalban.com/sitemap.xml` in Google Search Console and Bing
   Webmaster Tools, and inspect `/compositions/nunc-dimittis/` after publication.
+
+## Turnstile setup on Render
+
+Turnstile works with the existing Render Docker service and Resend SMTP. You do
+not need to proxy the site through Cloudflare or change DNS providers.
+
+1. In the [Cloudflare dashboard](https://dash.cloudflare.com/), open Turnstile and
+   add a widget. Choose **Managed** mode. Add `thomasalban.com` and
+   `www.thomasalban.com` as allowed hostnames. Do not enable pre-clearance, which
+   this integration does not use.
+2. In the Render service's **Environment** settings, add:
+   - `DJANGO_TURNSTILE_ENABLED=true`
+   - `DJANGO_TURNSTILE_SITE_KEY`: the widget's public site key
+   - `DJANGO_TURNSTILE_SECRET_KEY`: its private secret key
+   - `DJANGO_TURNSTILE_HOSTNAMES=thomasalban.com,www.thomasalban.com`
+   The blueprint declares these too. Never commit actual secret keys. Save and
+   redeploy. A redeploy also runs the enquiry-budget database migration at runtime.
+3. Verify both forms on both domains in a real browser. The widget uses
+   Cloudflare's script at `https://challenges.cloudflare.com/turnstile/v0/api.js`;
+   Django needs outbound HTTPS to
+   `https://challenges.cloudflare.com/turnstile/v0/siteverify`. Render supports this
+   ordinary browser/server HTTPS flow. If adding a page CSP later, configure the
+   official Turnstile script/frame allowances; do not weaken the media sandbox.
+4. Confirm a completed challenge permits one successful enquiry, then confirm
+   missing/failed verification shows the apology and clickable Gmail fallback
+   without sending email or consuming sending capacity. Check blocked-script and
+   JavaScript-disabled fallback usability too. Automated tests mock Cloudflare;
+   they do not replace this live check with real keys.
+
+Production verification is fail-closed: absent keys, disabled configuration,
+network failures (5-second socket timeout), expired/reused tokens, and mismatched
+hostname/action cannot send email. Keys are not required for `collectstatic` or
+startup, so a successful build does not prove forms are configured. In development
+only, verification defaults off with `DEBUG=True`; set the keys and enabled flag
+explicitly to exercise it. Never use Cloudflare's always-pass test secrets in
+production. Without `DJANGO_TURNSTILE_HOSTNAMES`, verification accepts only the
+hostname of `DJANGO_SITE_URL`; hostnames must be explicit, not wildcard patterns.
+
+Tokens are checked server-side before the shared sending-budget reservation;
+ordinary validation, honeypots and session cooldown run first. No visitor IP is
+sent by Django to Siteverify because the proxy does not authenticate it. The
+widget still connects the visitor's browser to Cloudflare. Add this provider,
+purpose, and browser/server processing to owner-approved privacy information;
+review [Cloudflare's Turnstile privacy information](https://www.cloudflare.com/turnstile-privacy-policy/).
+Turnstile makes automated abuse harder but does not identify a unique person or
+promise that one determined attacker cannot exhaust the shared budget.
+
+Official guidance: [widget setup](https://developers.cloudflare.com/turnstile/get-started/widget-management/dashboard/)
+and [server validation](https://developers.cloudflare.com/turnstile/get-started/server-side-validation/).
 
 ## Backup and offline restore
 

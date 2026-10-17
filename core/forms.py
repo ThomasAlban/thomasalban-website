@@ -1,4 +1,5 @@
 from django import forms
+from django.conf import settings
 
 
 class EnquiryForm(forms.Form):
@@ -10,6 +11,14 @@ class EnquiryForm(forms.Form):
     )
     message = forms.CharField(required=False, max_length=10000, widget=forms.Textarea)
     website = forms.CharField(required=False, strip=False, widget=forms.HiddenInput)
+
+    @property
+    def turnstile_enabled(self):
+        return settings.TURNSTILE_ENABLED or not settings.DEBUG
+
+    @property
+    def turnstile_site_key(self):
+        return settings.TURNSTILE_SITE_KEY
 
     def __init__(self, *args, include_copy_count=True, **kwargs):
         super().__init__(*args, **kwargs)

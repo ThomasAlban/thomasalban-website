@@ -1,4 +1,9 @@
 {% extends 'base.html' %}
+{% load static %}
+
+{% block heading_preload %}
+  <link rel="preload" as="image" href="{% static 'images/headings/about.png' %}" fetchpriority="high">
+{% endblock %}
 
 {% block content %}
   <div class="about-layout{% if photos %} about-layout-with-photos{% endif %}">

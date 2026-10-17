@@ -4,6 +4,21 @@ from .markdown import render_prose
 from .validators import IMAGE_HELP_TEXT, validate_image_extension
 
 
+class EnquiryBudget(models.Model):
+    """One persistent, anonymous sending budget shared by all enquiry forms."""
+
+    id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
+    short_started_at = models.FloatField(default=0)
+    short_count = models.PositiveIntegerField(default=0)
+    daily_started_at = models.FloatField(default=0)
+    daily_count = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(condition=models.Q(id=1), name='core_enquiry_budget_singleton'),
+        ]
+
+
 class Biography(models.Model):
     id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
     body = models.TextField(

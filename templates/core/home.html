@@ -1,4 +1,9 @@
 {% extends 'base.html' %}
+{% load static %}
+
+{% block heading_preload %}
+  <link rel="preload" as="image" href="{% static 'images/headings/thomas-alban.png' %}" fetchpriority="high">
+{% endblock %}
 
 {% block content %}
   <section class="hero" aria-labelledby="home-title">

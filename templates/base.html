@@ -14,6 +14,7 @@
   {% if canonical_url %}<meta property="og:url" content="{{ canonical_url }}">{% endif %}
   <meta property="og:type" content="website">
   {% endblock %}
+  {% block heading_preload %}{% endblock %}
   <script src="{% static 'js/theme.js' %}"></script>
   <script src="{% static 'js/navigation.js' %}" defer></script>
   <link rel="stylesheet" href="{% static 'css/site.css' %}">

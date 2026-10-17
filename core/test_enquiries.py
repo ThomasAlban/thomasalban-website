@@ -3,10 +3,14 @@ from unittest.mock import patch
 
 from django.conf import settings
 from django.core import mail
-from django.test import RequestFactory, SimpleTestCase, override_settings
+from django.test import RequestFactory, SimpleTestCase, TestCase, override_settings
 
 from compositions.models import Composition
-from core.enquiries import ERROR_MESSAGE, SESSION_KEY, deliver_enquiry
+from core.enquiries import (
+    ERROR_MESSAGE, SESSION_KEY, SHARED_LIMIT_MESSAGE, SHORT_WINDOW_LIMIT,
+    deliver_enquiry,
+)
+from core.models import EnquiryBudget
 from core.forms import EnquiryForm
 from core.test_mail_backend import ACCEPTED_MAILERS
 
@@ -48,8 +52,11 @@ class EnquiryFormTests(SimpleTestCase):
     DEFAULT_FROM_EMAIL='composer@example.com',
     ENQUIRY_EMAIL='enquiries@example.com',
 )
-class EnquiryDeliveryTests(SimpleTestCase):
+class EnquiryDeliveryTests(TestCase):
     def setUp(self):
+        verification = patch('core.enquiries.verify_turnstile', return_value=True)
+        verification.start()
+        self.addCleanup(verification.stop)
         self.request = RequestFactory().post('/contact/')
         self.request.session = {}
         # Initialising locmem creates the outbox on the first test.
@@ -125,6 +132,50 @@ class EnquiryDeliveryTests(SimpleTestCase):
         other_request.session = {}
         self.assertTrue(deliver_enquiry(other_request, self.form()))
         self.assertEqual(len(mail.outbox), 2)
+
+    def test_shared_budget_blocks_fresh_sessions_and_both_enquiry_types(self):
+        composition = Composition(title='Nunc dimittis', slug='nunc-dimittis')
+        with patch('core.enquiries.time', return_value=100000):
+            for index in range(SHORT_WINDOW_LIMIT):
+                self.request.session = {}
+                self.assertTrue(deliver_enquiry(
+                    self.request, self.form(), composition if index % 2 else None,
+                ))
+            for target in (None, composition):
+                self.request.session = {}
+                form = self.form(email='different@example.com')
+                self.assertFalse(deliver_enquiry(self.request, form, target))
+                self.assertEqual(list(form.non_field_errors()), [SHARED_LIMIT_MESSAGE])
+                self.assertNotIn(SESSION_KEY, self.request.session)
+        self.assertEqual(len(mail.outbox), SHORT_WINDOW_LIMIT)
+
+    def test_failed_smtp_attempts_consume_shared_budget(self):
+        with patch('core.enquiries.EmailMessage.send', return_value=0) as send:
+            for _ in range(SHORT_WINDOW_LIMIT):
+                with self.assertLogs('core.enquiries', level='WARNING'):
+                    self.assert_rejected(self.form())
+            form = self.form()
+            self.assertFalse(deliver_enquiry(self.request, form))
+            self.assertEqual(list(form.non_field_errors()), [SHARED_LIMIT_MESSAGE])
+        self.assertEqual(send.call_count, SHORT_WINDOW_LIMIT)
+
+    def test_budget_storage_failure_fails_closed_without_logging_details(self):
+        with (
+            patch('core.enquiries.reserve_enquiry_attempt', side_effect=RuntimeError('private')),
+            patch('core.enquiries.EmailMessage.send') as send,
+            self.assertLogs('core.enquiries', level='ERROR') as logs,
+        ):
+            self.assert_rejected(self.form())
+        send.assert_not_called()
+        self.assertEqual(logs.output, ['ERROR:core.enquiries:Enquiry delivery failed.'])
+
+    def test_rejected_forms_and_cooldown_do_not_consume_shared_budget(self):
+        self.assertFalse(deliver_enquiry(self.request, self.form(email='invalid')))
+        self.assert_rejected(self.form(website='spam'))
+        self.assertEqual(EnquiryBudget.objects.get().short_count, 0)
+        self.assertTrue(deliver_enquiry(self.request, self.form()))
+        self.assertFalse(deliver_enquiry(self.request, self.form()))
+        self.assertEqual(EnquiryBudget.objects.get().short_count, 1)
 
     def test_cooldown_starts_after_delivery_completes(self):
         with patch('core.enquiries.time', side_effect=[1000, 1010]):

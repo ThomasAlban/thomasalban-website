@@ -1,6 +1,10 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block heading_preload %}
+  <link rel="preload" as="image" href="{% static 'images/headings/compositions.png' %}" fetchpriority="high">
+{% endblock %}
+
 {% block content %}
   <header class="page-heading">
     <h1 class="drawn-heading drawn-heading-compositions"><span class="drawn-heading-text">Compositions</span></h1>

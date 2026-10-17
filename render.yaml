@@ -42,6 +42,14 @@ services:
         value: 'false'
       - key: DJANGO_SECURE_HSTS_PRELOAD
         value: 'false'
+      - key: DJANGO_TURNSTILE_ENABLED
+        value: 'true'
+      - key: DJANGO_TURNSTILE_SITE_KEY
+        sync: false
+      - key: DJANGO_TURNSTILE_SECRET_KEY
+        sync: false
+      - key: DJANGO_TURNSTILE_HOSTNAMES
+        value: thomasalban.com,www.thomasalban.com
       - key: DJANGO_EMAIL_BACKEND
         value: django.core.mail.backends.smtp.EmailBackend
       - key: DJANGO_DEFAULT_FROM_EMAIL

@@ -1,4 +1,11 @@
 {% extends 'base.html' %}
+{% load static %}
+
+{% block heading_preload %}
+  {% if not composition %}
+    <link rel="preload" as="image" href="{% static 'images/headings/contact.png' %}" fetchpriority="high">
+  {% endif %}
+{% endblock %}
 
 {% block content %}
   <header class="page-heading">

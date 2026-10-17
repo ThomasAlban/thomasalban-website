@@ -8,7 +8,9 @@
     {% csrf_token %}
     {% if form.errors %}
       <div class="error-summary" role="alert">
-        <p>Please check the fields below. Your message has not been sent.</p>
+        {% if not form.non_field_errors %}
+          <p>Please check the fields below. Your message has not been sent.</p>
+        {% endif %}
         {{ form.non_field_errors }}
         {% for field in form.hidden_fields %}{{ field.errors }}{% endfor %}
       </div>
@@ -27,6 +29,12 @@
         </div>
       {% endif %}
     {% endfor %}
+    {% if form.turnstile_enabled %}
+      <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+      <div class="cf-turnstile" data-sitekey="{{ form.turnstile_site_key }}" data-action="enquiry"></div>
+      <p class="form-note">If verification fails or does not load, please contact <a href="mailto:thomasalbanmusic@gmail.com">thomasalbanmusic@gmail.com</a> directly.</p>
+      <noscript><p>Verification requires JavaScript. Please contact <a href="mailto:thomasalbanmusic@gmail.com">thomasalbanmusic@gmail.com</a> directly.</p></noscript>
+    {% endif %}
     <p class="form-note">Fields marked as required must be completed.</p>
     <button type="submit">Send enquiry</button>
   </form>

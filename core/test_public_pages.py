@@ -12,8 +12,10 @@ from django.test import Client, TestCase, override_settings
 from django.utils.html import escape
 
 from compositions.models import Composition, ListeningLink, ScorePreview
-from core.enquiries import ERROR_MESSAGE, SESSION_KEY
+from core.enquiries import ERROR_MESSAGE, SESSION_KEY, SHARED_LIMIT_MESSAGE, SHORT_WINDOW_LIMIT
+from core.models import EnquiryBudget
 from core.test_mail_backend import ACCEPTED_MAILERS
+from core.turnstile import verify_turnstile
 
 
 class PageParser(HTMLParser):
@@ -181,6 +183,38 @@ class PublicPageTests(TestCase):
                     html=True,
                 )
 
+    def test_drawn_headings_preload_only_the_current_mask_before_scripts(self):
+        for path, filename in [
+            ('/', 'thomas-alban.png'),
+            ('/compositions/', 'compositions.png'),
+            ('/about/', 'about.png'),
+            ('/contact/', 'contact.png'),
+        ]:
+            with self.subTest(path=path):
+                tags = self.parse(self.client.get(path)).tags
+                preloads = [(i, attrs) for i, (tag, attrs) in enumerate(tags)
+                            if tag == 'link' and attrs.get('rel') == 'preload']
+                self.assertEqual(len(preloads), 1)
+                position, attributes = preloads[0]
+                self.assertEqual(attributes, {
+                    'rel': 'preload',
+                    'as': 'image',
+                    'href': f'/static/images/headings/{filename}',
+                    'fetchpriority': 'high',
+                })
+                first_script = next(i for i, (tag, _) in enumerate(tags)
+                                    if tag == 'script')
+                stylesheet = next(i for i, (tag, attrs) in enumerate(tags)
+                                  if tag == 'link' and
+                                  attrs.get('rel') == 'stylesheet')
+                self.assertLess(position, first_script)
+                self.assertLess(position, stylesheet)
+
+    def test_composition_detail_does_not_preload_a_heading_mask(self):
+        response = self.client.get(self.make_work().get_absolute_url())
+        self.assertFalse(any(tag == 'link' and attrs.get('rel') == 'preload'
+                             for tag, attrs in self.parse(response).tags))
+
     def test_score_enquiry_keeps_text_heading(self):
         from django.template.loader import render_to_string
 
@@ -189,6 +223,8 @@ class PublicPageTests(TestCase):
         })
         self.assertIn('<h1>Score enquiry</h1>', content)
         self.assertNotIn('drawn-heading-contact', content)
+        self.assertFalse(any(tag == 'link' and attrs.get('rel') == 'preload'
+                             for tag, attrs in PageParser(content).tags))
 
     def test_privacy_page_and_links_are_removed(self):
         self.assertEqual(self.client.get('/privacy/').status_code, 404)
@@ -517,10 +553,17 @@ class PublicPageTests(TestCase):
         self.assertFalse(any(tag == 'img' and attrs.get('onerror')
                              for tag, attrs in page.tags))
         scripts = [attrs for tag, attrs in page.tags if tag == 'script']
-        self.assertEqual(len(scripts), 3)
-        self.assertEqual(scripts[0], {'src': '/static/js/theme.js'})
-        self.assertEqual(scripts[1], {'src': '/static/js/navigation.js', 'defer': None})
-        self.assertEqual(scripts[2], {'type': 'application/ld+json'})
+        expected_scripts = [
+            {'src': '/static/js/theme.js'},
+            {'src': '/static/js/navigation.js', 'defer': None},
+            {'type': 'application/ld+json'},
+        ]
+        if response.context['form'].turnstile_enabled:
+            expected_scripts.append({
+                'src': 'https://challenges.cloudflare.com/turnstile/v0/api.js',
+                'async': None, 'defer': None,
+            })
+        self.assertEqual(scripts, expected_scripts)
         for path in ('/', '/compositions/'):
             response = self.client.get(path)
             self.assertNotContains(response, title)
@@ -602,6 +645,9 @@ class PublicEnquiryTests(TestCase):
     make_work = PublicPageTests.make_work
 
     def setUp(self):
+        verification = patch('core.enquiries.verify_turnstile', return_value=True)
+        verification.start()
+        self.addCleanup(verification.stop)
         mail.mailers['default']
         mail.outbox.clear()
         self.work = self.make_work('nunc-dimittis', title='Nunc dimittis')
@@ -702,17 +748,70 @@ class PublicEnquiryTests(TestCase):
             for failure in ({'side_effect': RuntimeError('Delivery failed')}, {'return_value': 0}):
                 with self.subTest(path=path, failure=failure):
                     client = Client()
-                    with patch('core.enquiries.EmailMessage.send', **failure), self.assertLogs('core.enquiries'):
-                        response = client.post(path, self.data)
-                    self.assertContains(response, ERROR_MESSAGE)
-                    self.assertFalse(response.context['sent'])
-                    self.assertNotContains(response, 'Your message has been sent.')
-                    self.assertNotContains(client.get(path), 'Your message has been sent.')
-                    self.assertNotIn(SESSION_KEY, client.session)
-                    # Failure must not prevent a later successful retry.
-                    retry = client.post(path, self.data)
-                    self.assertRedirects(retry, path, fetch_redirect_response=False)
+                    # Each failure/retry pair is a separate short budget window.
+                    with patch('core.enquiries.time', return_value=100000 + len(mail.outbox) * 600):
+                        with patch('core.enquiries.EmailMessage.send', **failure), self.assertLogs('core.enquiries'):
+                            response = client.post(path, self.data)
+                        self.assertContains(response, ERROR_MESSAGE)
+                        self.assertContains(response, 'We are sorry')
+                        self.assertContains(response, '<a href="mailto:thomasalbanmusic@gmail.com">thomasalbanmusic@gmail.com</a>', html=True)
+                        self.assertNotContains(response, 'Please check the fields below.')
+                        self.assertFalse(response.context['sent'])
+                        self.assertNotContains(response, 'Your message has been sent.')
+                        self.assertNotContains(client.get(path), 'Your message has been sent.')
+                        self.assertNotIn(SESSION_KEY, client.session)
+                        # Failure must not prevent a later successful retry.
+                        retry = client.post(path, self.data)
+                        self.assertRedirects(retry, path, fetch_redirect_response=False)
         self.assertEqual(len(mail.outbox), 4)
+
+    def test_shared_budget_covers_both_routes_despite_fresh_clients_and_headers(self):
+        paths = ('/contact/', self.work.get_absolute_url())
+        for index in range(SHORT_WINDOW_LIMIT):
+            client = Client()
+            response = client.post(paths[index % 2], self.data)
+            self.assertEqual(response.status_code, 302)
+        for path in paths:
+            client = Client()
+            response = client.post(path, self.data, HTTP_X_FORWARDED_FOR='203.0.113.1')
+            self.assertContains(response, SHARED_LIMIT_MESSAGE)
+            self.assertContains(response, '<a href="mailto:thomasalbanmusic@gmail.com">thomasalbanmusic@gmail.com</a>', html=True)
+            self.assertNotContains(response, 'Your message has been sent.')
+            self.assertNotIn(SESSION_KEY, client.session)
+            self.assertEqual(client.get(path).status_code, 200)
+        self.assertEqual(len(mail.outbox), SHORT_WINDOW_LIMIT)
+
+    @override_settings(
+        DEBUG=False, TURNSTILE_ENABLED=True,
+        TURNSTILE_SITE_KEY='public-widget-key', TURNSTILE_SECRET_KEY='private-widget-secret',
+        TURNSTILE_HOSTNAMES=('composer.example',), SITE_URL='https://composer.example',
+    )
+    def test_turnstile_widget_and_real_verification_gate_on_both_routes(self):
+        with (
+            patch('core.enquiries.verify_turnstile', new=verify_turnstile),
+            patch('core.turnstile.urlopen') as network,
+        ):
+            response_body = network.return_value.__enter__.return_value
+            for index, path in enumerate(('/contact/', self.work.get_absolute_url())):
+                client = Client()
+                page = client.get(path)
+                self.assertContains(page, 'data-sitekey="public-widget-key"')
+                self.assertContains(page, 'data-action="enquiry"')
+                self.assertNotContains(page, 'private-widget-secret')
+                missing = client.post(path, self.data)
+                self.assertContains(missing, ERROR_MESSAGE)
+                network.assert_not_called()
+                self.assertEqual(EnquiryBudget.objects.get().daily_count, index)
+                response_body.read.return_value = b'{"success": false, "error-codes": ["timeout-or-duplicate"]}'
+                rejected = client.post(path, {**self.data, 'cf-turnstile-response': 'used-token'})
+                self.assertContains(rejected, ERROR_MESSAGE)
+                self.assertEqual(EnquiryBudget.objects.get().daily_count, index)
+                response_body.read.return_value = b'{"success": true, "hostname": "composer.example", "action": "enquiry"}'
+                accepted = client.post(path, {**self.data, 'cf-turnstile-response': 'fresh-token'})
+                self.assertEqual(accepted.status_code, 302)
+                self.assertEqual(EnquiryBudget.objects.get().daily_count, index + 1)
+                network.reset_mock()
+        self.assertEqual(len(mail.outbox), 2)
 
     def test_csrf_enforced_for_both_forms_and_valid_token_delivers(self):
         for path in ('/contact/', self.work.get_absolute_url()):

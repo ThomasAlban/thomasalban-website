@@ -172,6 +172,18 @@ CSRF_TRUSTED_ORIGINS = [
     for origin in CSRF_TRUSTED_ORIGINS
 ]
 
+# Missing Turnstile keys fail closed on submission, not during image builds.
+TURNSTILE_ENABLED = env_bool('DJANGO_TURNSTILE_ENABLED', not DEBUG)
+TURNSTILE_SITE_KEY = os.environ.get('DJANGO_TURNSTILE_SITE_KEY', '').strip()
+TURNSTILE_SECRET_KEY = os.environ.get('DJANGO_TURNSTILE_SECRET_KEY', '').strip()
+TURNSTILE_HOSTNAMES = tuple(
+    host.strip()
+    for host in os.environ.get('DJANGO_TURNSTILE_HOSTNAMES', '').split(',')
+    if host.strip()
+)
+if not all(valid_host(host) for host in TURNSTILE_HOSTNAMES):
+    raise ImproperlyConfigured('DJANGO_TURNSTILE_HOSTNAMES must contain explicit hostnames or IP literals, without wildcards, schemes or ports.')
+
 # Local console output is not delivery. Configure SMTP before launch.
 MAILERS = {
     'default': {
