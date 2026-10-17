@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.test import RequestFactory, TestCase, override_settings
 
-from .models import Composition, ListeningLink
+from .models import Composition, CompositionImage, ListeningLink
 
 
 @override_settings(ALLOWED_HOSTS=['testserver'], SECURE_SSL_REDIRECT=False)
@@ -37,6 +37,25 @@ class CompositionTextTests(TestCase):
         self.assertEqual(self.composition.text, text)
         self.assertTrue(self.composition.has_translation)
 
+    def test_single_line_breaks_and_blank_lines_are_preserved(self):
+        for line_ending in ('\n', '\r\n'):
+            for trailing_spaces in ('', '  '):
+                with self.subTest(line_ending=line_ending, trailing_spaces=trailing_spaces):
+                    response = self.render_text(
+                        f'First line{trailing_spaces}{line_ending}Second line'
+                        f'{line_ending}{line_ending}*Translated line{line_ending}Another line*'
+                    )
+                    self.assertContains(response, '<p>First line<br>Second line</p>', html=True)
+                    self.assertContains(
+                        response, '<p><em>Translated line<br>Another line</em></p>', html=True,
+                    )
+
+    def test_description_keeps_normal_markdown_line_break_behavior(self):
+        self.composition.description = 'First description line\nSecond description line'
+        response = self.render_text('First verse line\nSecond verse line')
+        self.assertContains(response, '<p>First description line\nSecond description line</p>', html=True)
+        self.assertContains(response, '<p>First verse line<br>Second verse line</p>', html=True)
+
     def test_heading_without_translation(self):
         response = self.render_text('Nunc dimittis.')
         self.assertContains(response, '<h2 id="text-title">Text</h2>', html=True)
@@ -56,14 +75,19 @@ class CompositionTextTests(TestCase):
                 response = self.render_text('', has_translation=has_translation)
                 self.assertNotContains(response, 'id="text-title"')
 
-    def test_text_is_below_description_and_above_listen(self):
+    def test_text_is_below_images_and_above_listen(self):
         self.composition.description = 'Description before sung text.'
+        image = CompositionImage.objects.create(
+            composition=self.composition, image='composition_images/choir.jpg',
+            alt_text='Choir at the premiere',
+        )
         ListeningLink.objects.create(
             composition=self.composition, label='Recording', url='https://example.com',
         )
         response = self.render_text('Sung text goes here.')
         content = response.content.decode()
-        self.assertLess(content.index('Description before sung text.'), content.index('id="text-title"'))
+        self.assertLess(content.index('Description before sung text.'), content.index(image.image.url))
+        self.assertLess(content.index(image.image.url), content.index('id="text-title"'))
         self.assertLess(content.index('Sung text goes here.'), content.index('id="recording-title"'))
 
     def test_unsafe_html_links_and_images_are_not_rendered(self):
@@ -91,7 +115,7 @@ class CompositionTextTests(TestCase):
         form = admin.site._registry[Composition].get_form(request)()
         self.assertFalse(form.fields['text'].required)
         self.assertIn('Markdown supported', form.fields['text'].help_text)
-        self.assertIn('two spaces', form.fields['text'].help_text)
+        self.assertIn('Single line breaks are preserved', form.fields['text'].help_text)
         self.assertIn('any language', form.fields['text'].help_text)
         self.assertFalse(form.fields['has_translation'].required)
         self.assertEqual(form.fields['has_translation'].label, 'Has translation')

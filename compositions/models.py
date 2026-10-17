@@ -31,7 +31,7 @@ class Composition(models.Model):
         help_text=(
             'Optional sung text for choral or vocal compositions, in any language. '
             'Markdown supported: *italics*, **bold**, [source](https://example.com). '
-            'Use blank lines between paragraphs or end a line with two spaces for a line break. '
+            'Single line breaks are preserved; use blank lines between verses or paragraphs. '
             'Include any translation here and tick Has translation below; '
             'add italics yourself if wanted. Raw HTML and images are not supported.'
         ),
@@ -88,7 +88,7 @@ class Composition(models.Model):
 
     @property
     def rendered_text(self):
-        return render_prose(self.text)
+        return render_prose(self.text, preserve_line_breaks=True)
 
     @property
     def safe_listening_links(self):
