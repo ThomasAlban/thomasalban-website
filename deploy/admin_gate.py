@@ -40,9 +40,15 @@ def main():
             os.fchown(stream.fileno(), 0, group)
             os.fchmod(stream.fileno(), 0o640)
             stream.write(record)
-    except (ValueError, OSError):
-        # Never print subprocess output, environment values or password hashes.
-        raise SystemExit('Admin gate configuration failed; check required ADMIN_GATE secrets.') from None
+    except ValueError as error:
+        # Validation messages are fixed strings and never contain secret values.
+        raise SystemExit(f'Admin gate configuration failed: {error}') from None
+    except OSError as error:
+        # Report only the exception class/errno, not paths or subprocess output.
+        raise SystemExit(
+            f'Admin gate setup failed: {type(error).__name__} (errno {error.errno}); '
+            'check OpenSSL availability and permissions for /run/admin-gate.'
+        ) from None
 
 
 if __name__ == '__main__':

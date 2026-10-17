@@ -4,7 +4,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import Mock, patch
 
-from deploy.admin_gate import gate_record
+from deploy.admin_gate import gate_record, main
 
 from django.db import OperationalError
 from django.test import SimpleTestCase, TestCase, override_settings
@@ -41,6 +41,27 @@ class AdminGateTests(SimpleTestCase):
         )):
             with self.assertRaisesMessage(ValueError, 'Admin gate password hashing failed.'):
                 gate_record({'ADMIN_GATE_USERNAME': 'test-admin', 'ADMIN_GATE_PASSWORD': 'x' * 24})
+
+    def test_startup_reports_invalid_field_without_secret_values(self):
+        secret = 'private-test-password-0123456789'
+        with patch.dict('os.environ', {
+            'ADMIN_GATE_USERNAME': '', 'ADMIN_GATE_PASSWORD': secret,
+        }, clear=True):
+            with self.assertRaises(SystemExit) as caught:
+                main()
+        self.assertIn('ADMIN_GATE_USERNAME must be', str(caught.exception))
+        self.assertNotIn(secret, str(caught.exception))
+
+    def test_startup_distinguishes_setup_failure_without_sensitive_details(self):
+        with patch('deploy.admin_gate.gate_record', side_effect=PermissionError(
+            13, 'private operating system detail', '/private/path',
+        )):
+            with self.assertRaises(SystemExit) as caught:
+                main()
+        message = str(caught.exception)
+        self.assertIn('PermissionError (errno 13)', message)
+        self.assertNotIn('private operating system detail', message)
+        self.assertNotIn('/private/path', message)
 
     def test_proxy_strips_authorization_and_gate_cannot_be_bypassed_by_regex(self):
         root = Path(__file__).resolve().parent.parent
