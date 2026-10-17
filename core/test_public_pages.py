@@ -183,35 +183,29 @@ class PublicPageTests(TestCase):
                     html=True,
                 )
 
-    def test_drawn_headings_preload_only_the_current_mask_before_scripts(self):
-        for path, filename in [
-            ('/', 'thomas-alban.png'),
-            ('/compositions/', 'compositions.png'),
-            ('/about/', 'about.png'),
-            ('/contact/', 'contact.png'),
+    def test_drawn_headings_embed_only_the_current_mask_without_image_requests(self):
+        from core.templatetags.headings import heading_mask
+
+        for path, name in [
+            ('/', 'thomas-alban'),
+            ('/compositions/', 'compositions'),
+            ('/about/', 'about'),
+            ('/contact/', 'contact'),
         ]:
             with self.subTest(path=path):
-                tags = self.parse(self.client.get(path)).tags
-                preloads = [(i, attrs) for i, (tag, attrs) in enumerate(tags)
-                            if tag == 'link' and attrs.get('rel') == 'preload']
-                self.assertEqual(len(preloads), 1)
-                position, attributes = preloads[0]
-                self.assertEqual(attributes, {
-                    'rel': 'preload',
-                    'as': 'image',
-                    'href': f'/static/images/headings/{filename}',
-                    'fetchpriority': 'high',
-                })
-                first_script = next(i for i, (tag, _) in enumerate(tags)
-                                    if tag == 'script')
-                stylesheet = next(i for i, (tag, attrs) in enumerate(tags)
-                                  if tag == 'link' and
-                                  attrs.get('rel') == 'stylesheet')
-                self.assertLess(position, first_script)
-                self.assertLess(position, stylesheet)
+                response = self.client.get(path)
+                tags = self.parse(response).tags
+                heading = next(attrs for tag, attrs in tags if tag == 'h1')
+                self.assertEqual(heading['style'],
+                                 f"--heading-mask: url('{heading_mask(name)}')")
+                self.assertEqual(response.content.count(b'data:image/png;base64,'), 1)
+                self.assertNotContains(response, '/images/headings/')
+                self.assertFalse(any(tag == 'link' and attrs.get('rel') == 'preload'
+                                     for tag, attrs in tags))
 
     def test_composition_detail_does_not_preload_a_heading_mask(self):
         response = self.client.get(self.make_work().get_absolute_url())
+        self.assertNotContains(response, 'data:image/png;base64,')
         self.assertFalse(any(tag == 'link' and attrs.get('rel') == 'preload'
                              for tag, attrs in self.parse(response).tags))
 
@@ -223,6 +217,7 @@ class PublicPageTests(TestCase):
         })
         self.assertIn('<h1>Score enquiry</h1>', content)
         self.assertNotIn('drawn-heading-contact', content)
+        self.assertNotIn('data:image/png;base64,', content)
         self.assertFalse(any(tag == 'link' and attrs.get('rel') == 'preload'
                              for tag, attrs in PageParser(content).tags))
 

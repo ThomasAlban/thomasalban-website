@@ -78,10 +78,11 @@ main { flex: 1; min-height: 60vh; padding-bottom: 4rem; }
 .error-page .eyebrow { margin-bottom: 1.25rem; }
 .error-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem 1.75rem; margin-top: 2rem; padding-top: 2rem; border-top: 1px solid var(--rule); }
 /* Keep real heading text; the decorative mask inherits the current ink colour. */
-.drawn-heading-name { --heading-mask: url("../images/headings/thomas-alban.png"); --heading-width: 32rem; }
-.drawn-heading-compositions { --heading-mask: url("../images/headings/compositions.png"); --heading-width: 28rem; }
-.drawn-heading-about { --heading-mask: url("../images/headings/about.png"); --heading-width: 20rem; }
-.drawn-heading-contact { --heading-mask: url("../images/headings/contact.png"); --heading-width: 20rem; }
+/* Each heading embeds its own small mask in HTML, with no image request. */
+.drawn-heading-name { --heading-width: 32rem; }
+.drawn-heading-compositions { --heading-width: 28rem; }
+.drawn-heading-about { --heading-width: 20rem; }
+.drawn-heading-contact { --heading-width: 20rem; }
 @supports ((mask-image: url("")) or (-webkit-mask-image: url(""))) {
   .drawn-heading { position: relative; width: min(100%, var(--heading-width)); }
   .drawn-heading::before {
