@@ -26,6 +26,20 @@ class Composition(models.Model):
             'and start list items with "- ". Raw HTML and images are not supported.'
         ),
     )
+    text = models.TextField(
+        blank=True,
+        help_text=(
+            'Optional sung text for choral or vocal compositions, in any language. '
+            'Markdown supported: *italics*, **bold**, [source](https://example.com). '
+            'Use blank lines between paragraphs or end a line with two spaces for a line break. '
+            'Include any translation here and tick Has translation below; '
+            'add italics yourself if wanted. Raw HTML and images are not supported.'
+        ),
+    )
+    has_translation = models.BooleanField(
+        default=False,
+        help_text='Tick if the Text field includes a translation. Changes the heading to "Text and translation".',
+    )
     year_composed = models.PositiveSmallIntegerField(
         blank=True,
         null=True,
@@ -71,6 +85,10 @@ class Composition(models.Model):
     @property
     def rendered_description(self):
         return render_prose(self.description)
+
+    @property
+    def rendered_text(self):
+        return render_prose(self.text)
 
     @property
     def safe_listening_links(self):
