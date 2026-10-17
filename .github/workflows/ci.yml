@@ -1,0 +1,35 @@
+name: CI
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    env:
+      DJANGO_DEBUG: 'true'
+      DJANGO_DATABASE_PATH: /tmp/website-ci.sqlite3
+      DJANGO_MEDIA_ROOT: /tmp/website-ci-media
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Bootstrap repository-local uv
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install uv==0.13.0
+          # Fresh venv; retain bootstrap uv alongside locked application dependencies.
+          ./.venv/bin/uv sync --locked --inexact
+          test -x ./.venv/bin/uv
+          ./.venv/bin/uv --version
+      - name: Django checks and tests (no deployment secrets)
+        run: |
+          ./.venv/bin/uv run --no-env-file python manage.py check
+          ./.venv/bin/uv run --no-env-file python manage.py makemigrations --check --dry-run
+          ./.venv/bin/uv run --no-env-file python manage.py test
+      - name: Build production image and exercise nginx/Gunicorn
+        run: |
+          docker build -t website-ci .
+          bash deploy/smoke-test.sh

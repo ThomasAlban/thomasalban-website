@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Equal frequencies on both axes avoid directional streaks. Mid-grey
+       blends neutrally with the green; lighter and darker flecks add tooth. -->
+  <filter id="paper" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+    <feTurbulence type="fractalNoise" baseFrequency=".48" numOctaves="3" seed="8" stitchTiles="stitch"/>
+    <feColorMatrix type="saturate" values="0"/>
+    <feComponentTransfer>
+      <feFuncR type="linear" slope="1.8" intercept="-.4"/>
+      <feFuncG type="linear" slope="1.8" intercept="-.4"/>
+      <feFuncB type="linear" slope="1.8" intercept="-.4"/>
+      <feFuncA type="linear" slope=".3"/>
+    </feComponentTransfer>
+  </filter>
+  <path fill="#808080" filter="url(#paper)" d="M0 0h512v512H0z"/>
+</svg>

@@ -1,0 +1,33 @@
+{% if sent %}
+  <div class="notice" role="status">
+    <h3>Thank you for your enquiry</h3>
+    <p>Your message has been sent.</p>
+  </div>
+{% elif form %}
+  <form method="post" class="enquiry-form">
+    {% csrf_token %}
+    {% if form.errors %}
+      <div class="error-summary" role="alert">
+        <p>Please check the fields below. Your message has not been sent.</p>
+        {{ form.non_field_errors }}
+        {% for field in form.hidden_fields %}{{ field.errors }}{% endfor %}
+      </div>
+    {% endif %}
+    {% for field in form.hidden_fields %}{{ field }}{% endfor %}
+    {% for field in form.visible_fields %}
+      {% if field.name == 'honeypot' %}
+        <div hidden>{{ field }}</div>
+      {% else %}
+        <div class="form-field">
+          {{ field.label_tag }}
+          {{ field.errors }}
+          {{ field }}
+          {% if field.help_text %}<p class="form-note" id="{{ field.auto_id }}_helptext">{{ field.help_text }}</p>{% endif %}
+          {% if field.field.required %}<p class="form-note">Required.</p>{% endif %}
+        </div>
+      {% endif %}
+    {% endfor %}
+    <p class="form-note">Fields marked as required must be completed.</p>
+    <button type="submit">Send enquiry</button>
+  </form>
+{% endif %}

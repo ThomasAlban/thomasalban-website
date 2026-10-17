@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <div class="about-layout{% if photos %} about-layout-with-photos{% endif %}">
+    <div>
+      <header class="page-heading">
+        <h1 class="drawn-heading drawn-heading-about"><span class="drawn-heading-text">About</span></h1>
+      </header>
+      <div class="prose">
+        {% if biography.body %}
+          {{ biography.rendered_body }}
+        {% else %}
+          <aside class="notice" aria-labelledby="biography-note">
+            <h2 id="biography-note">Biography placeholder</h2>
+            <p>A biography will be added here. This placeholder should be replaced with an approved biography before launch.</p>
+          </aside>
+        {% endif %}
+        <p><a href="{% url 'compositions:list' %}">Explore Thomas Alban’s compositions</a> or <a href="{% url 'core:contact' %}">get in touch</a> about a score.</p>
+      </div>
+    </div>
+    {% if photos %}
+      <section class="about-photos" aria-label="Biography photos">
+        <div class="photo-gallery">
+          {% for photo in photos %}
+            {% if photo.image %}
+              <figure class="gallery-photo">
+                <img src="{{ photo.image.url }}" alt="{{ photo.alt_text }}" loading="lazy" decoding="async">
+                {% if photo.caption %}<figcaption>{{ photo.caption }}</figcaption>{% endif %}
+              </figure>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </section>
+    {% endif %}
+  </div>
+{% endblock %}

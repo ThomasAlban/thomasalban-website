@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <header class="page-heading">
+    {% if composition %}
+      <h1>Score enquiry</h1>
+    {% else %}
+      <h1 class="drawn-heading drawn-heading-contact"><span class="drawn-heading-text">Contact</span></h1>
+    {% endif %}
+    {% if composition %}
+      <p class="lead">Enquire about the score for <a href="{% url 'compositions:detail' slug=composition.slug %}">{{ composition.title }}</a>.</p>
+    {% else %}
+      <p class="lead">For score enquiries and other questions, please use the form below. You can also find my email address and LinkedIn page below.</p>
+      <ul class="lead">
+        <li>Email: <a href="mailto:thomasalbanmusic@gmail.com">thomasalbanmusic@gmail.com</a></li>
+        <li><a href="https://www.linkedin.com/in/thomas-alban-b7b285278/" rel="external noopener">LinkedIn</a></li>
+      </ul>
+    {% endif %}
+  </header>
+  <section class="prose" aria-labelledby="enquiry-title">
+    <h2 id="enquiry-title">Your enquiry</h2>
+    {% include 'includes/enquiry_form.html' %}
+  </section>
+{% endblock %}

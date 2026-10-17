@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block metadata %}
+  <title>{% block error_title %}{% endblock %} - Thomas Alban</title>
+  <meta name="robots" content="noindex, follow">
+{% endblock %}
+
+{% block content %}
+<section class="error-page" aria-labelledby="error-heading">
+  <p class="eyebrow">Error {% block error_code %}{% endblock %}</p>
+  <h1 id="error-heading">{% block error_heading %}{% endblock %}</h1>
+  <div class="lead">{% block error_message %}{% endblock %}</div>
+  <div class="error-actions">
+    <a class="button" href="{% url 'core:home' %}">Back to home</a>
+    <a href="{% url 'compositions:list' %}">Explore compositions</a>
+  </div>
+</section>
+{% endblock %}

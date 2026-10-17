@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+  <header class="page-heading">
+    <h1 class="drawn-heading drawn-heading-compositions"><span class="drawn-heading-text">Compositions</span></h1>
+  </header>
+  <section class="filter-panel" aria-labelledby="filter-title">
+    <h2 id="filter-title">Find a composition</h2>
+    <form method="get" action="{% url 'compositions:list' %}" class="filter-form">
+      {{ filter_form.non_field_errors }}
+      <div class="form-field">
+        {{ filter_form.sort.label_tag }}{{ filter_form.sort.errors }}
+        <div class="select-control">{{ filter_form.sort }}</div>
+      </div>
+      <div class="form-field">
+        {{ filter_form.category.label_tag }}{{ filter_form.category.errors }}
+        <div class="select-control">{{ filter_form.category }}</div>
+      </div>
+      <div class="form-field">
+        {{ filter_form.duration.label_tag }}{{ filter_form.duration.errors }}
+        <div class="select-control">{{ filter_form.duration }}</div>
+      </div>
+      {% if filter_form.years.field.choices %}
+        <div class="form-field filter-years">
+          <span class="filter-label" id="year-filter-label">Year composed</span>
+          <details class="year-dropdown"{% if filter_form.years.errors %} open{% endif %}>
+            <summary aria-labelledby="year-filter-label year-filter-summary">
+              <span id="year-filter-summary">{% if filter_form.years.value %}{{ filter_form.years.value|length }} selected{% else %}Any year{% endif %}</span>
+            </summary>
+            <fieldset class="year-options">{{ filter_form.years.as_field_group }}</fieldset>
+          </details>
+        </div>
+      {% endif %}
+      {% if has_options %}<a href="{% url 'compositions:list' %}">Clear filters</a>{% endif %}
+      <div class="filter-search-row">
+        <div class="form-field filter-search">{{ filter_form.q.as_field_group }}</div>
+        <button type="submit">Filter compositions</button>
+      </div>
+    </form>
+  </section>
+  <section class="section" aria-labelledby="works-title">
+    <h2 id="works-title">{% if has_filters %}Matching compositions{% else %}All compositions{% endif %}</h2>
+    <div class="work-grid">
+      {% for work in works %}
+        {% include 'includes/work_card.html' with work=work show_thumbnail=True only %}
+      {% empty %}
+        <div class="empty-state">
+          {% if has_filters %}
+            <p>No compositions match these filters.</p>
+            <a href="{% url 'compositions:list' %}">View all compositions</a>
+          {% else %}
+            <p>Compositions will be added here as they become available.</p>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+{% endblock %}
+
+{% block extra_scripts %}
+  <script src="{% static 'js/catalogue.js' %}" defer></script>
+{% endblock %}

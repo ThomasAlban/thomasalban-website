@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <section class="hero" aria-labelledby="home-title">
+    <h1 id="home-title" class="drawn-heading drawn-heading-name"><span class="drawn-heading-text">Thomas Alban</span></h1>
+    <p class="lead">I'm a 3rd year Music student at Clare College, Cambridge. On this website you can find my compositions!</p>
+    <a class="button" href="{% url 'compositions:list' %}">View compositions</a>
+  </section>
+  {% if featured %}
+    <section class="section featured" aria-labelledby="featured-title">
+      <p class="eyebrow">Featured</p>
+      <h2 id="featured-title"><a href="{% url 'compositions:detail' slug=featured.slug %}">{{ featured.title }}</a></h2>
+      {% if featured.instrumentation %}<p class="lead">For {{ featured.instrumentation }}</p>{% endif %}
+      <a href="{% url 'compositions:detail' slug=featured.slug %}">View {{ featured.title }}</a>
+    </section>
+  {% endif %}
+  <section class="section" aria-labelledby="recent-title">
+    <div class="section-heading">
+      <h2 id="recent-title">Recent</h2>
+      <a href="{% url 'compositions:list' %}">All compositions</a>
+    </div>
+    <div class="work-grid">
+      {% for work in recent_works %}
+        {% include 'includes/work_card.html' with work=work only %}
+      {% empty %}
+        <p class="empty-state">Compositions will be added here as they become available.</p>
+      {% endfor %}
+    </div>
+  </section>
+{% endblock %}

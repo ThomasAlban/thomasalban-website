@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+  <header class="page-heading">
+    <a class="back-link" href="{% url 'compositions:list' %}">All compositions</a>
+    <h1>{{ composition.title }}</h1>
+    <a href="#score-enquiry">Enquire about the score</a>
+  </header>
+  <div class="work-layout">
+    <div>
+      {% if composition.category or composition.instrumentation or composition.duration_display or composition.year_composed or composition.premiered_date %}
+        <section aria-labelledby="details-title">
+          <h2 id="details-title">About</h2>
+          <dl class="work-meta">
+            {% if composition.category %}<div><dt>Category</dt><dd>{{ composition.category }}</dd></div>{% endif %}
+            {% if composition.instrumentation %}<div><dt>Instrumentation</dt><dd>{{ composition.instrumentation }}</dd></div>{% endif %}
+            {% if composition.duration_display %}<div><dt>Duration</dt><dd>{{ composition.duration_display }}</dd></div>{% endif %}
+            {% if composition.year_composed %}<div><dt>Composed</dt><dd>{{ composition.year_composed }}</dd></div>{% endif %}
+            {% if composition.premiered_date %}<div><dt>Premiered</dt><dd><time datetime="{{ composition.premiered_date|date:'Y-m-d' }}">{{ composition.premiered_date|date:'j F Y' }}</time></dd></div>{% endif %}
+          </dl>
+        </section>
+      {% endif %}
+      {% if composition.description %}<div class="prose work-description">{{ composition.description|linebreaks }}</div>{% endif %}
+      {% with images=composition.images.all %}
+        {% if images %}
+          <section class="composition-images" id="composition-images" aria-label="Composition photos">
+            <div class="preview-grid">
+              {% for image in images %}
+                {% if image.image %}
+                  <figure class="composition-image">
+                    <img src="{{ image.image.url }}" alt="{{ image.alt_text }}" loading="lazy" decoding="async">
+                    {% if image.caption %}<figcaption>{{ image.caption }}</figcaption>{% endif %}
+                  </figure>
+                {% endif %}
+              {% endfor %}
+            </div>
+          </section>
+        {% endif %}
+      {% endwith %}
+      {% with links=composition.safe_listening_links %}
+        {% if composition.audio_file or links %}
+          <section class="section" aria-labelledby="recording-title">
+            <h2 id="recording-title">Listen</h2>
+            {% if composition.audio_file %}
+              <div class="audio-player" data-audio-player>
+                <audio controls preload="none" aria-label="Listen to {{ composition.title }}" src="{{ composition.audio_file.url }}">
+                  <a href="{{ composition.audio_file.url }}">Listen to the audio file</a>
+                </audio>
+                <p><a href="{{ composition.audio_file.url }}">Open audio file</a></p>
+                {% if composition.audio_credit %}<p>{{ composition.audio_credit }}</p>{% endif %}
+              </div>
+            {% endif %}
+            {% if links %}
+              {% for link in links %}
+                {% with embed_url=link.embed_url %}
+                  {% if link.is_primary and embed_url %}
+                    <div class="recording-embed">
+                      <iframe src="{{ embed_url }}" title="{{ composition.title }} - {{ link.label }}" class="{% if 'open.spotify.com' in embed_url %}spotify-player{% else %}video-player{% endif %}" loading="eager" referrerpolicy="strict-origin-when-cross-origin" allow="encrypted-media; fullscreen; picture-in-picture" allowfullscreen></iframe>
+                    </div>
+                  {% endif %}
+                {% endwith %}
+              {% endfor %}
+              <ul class="listening-links">
+                {% for link in links %}
+                  <li><a href="{{ link.safe_url }}" rel="external noopener">{{ link.label }} <span class="link-note">(external website)</span></a>{% if link.credit %}<p>{{ link.credit }}</p>{% endif %}</li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+          </section>
+        {% endif %}
+      {% endwith %}
+    </div>
+    <aside class="enquiry-panel" id="score-enquiry" aria-labelledby="score-enquiry-title">
+      <h2 id="score-enquiry-title">Score enquiry</h2>
+      <p>Enquire about the score for {{ composition.title }}.</p>
+      {% include 'includes/enquiry_form.html' %}
+    </aside>
+  </div>
+  {% with previews=composition.score_previews.all %}
+    {% if previews %}
+      <section class="section" aria-labelledby="previews-title">
+        <h2 id="previews-title">Score previews</h2>
+        <p class="helptext">Select a preview to enlarge it and zoom in.</p>
+        <div class="score-preview-grid">
+          {% for preview in previews %}
+            {% if preview.image %}
+              <figure class="score-preview">
+                <a href="{{ preview.image.url }}" data-score-preview aria-label="Enlarge score preview: {{ preview.alt_text }}">
+                  <img src="{{ preview.image.url }}" alt="{{ preview.alt_text }}" loading="lazy" decoding="async">
+                </a>
+              </figure>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </section>
+      <dialog class="score-viewer" id="score-viewer" aria-labelledby="score-viewer-title">
+        <div class="score-viewer-header">
+          <h2 id="score-viewer-title">Score preview</h2>
+          <button type="button" data-viewer-close autofocus>Close</button>
+        </div>
+        <div class="score-viewer-toolbar">
+          <div class="score-viewer-navigation" role="group" aria-label="Preview navigation">
+            <button type="button" data-preview-previous aria-label="Previous score preview" disabled>←</button>
+            <output data-preview-status aria-live="polite"></output>
+            <button type="button" data-preview-next aria-label="Next score preview" disabled>→</button>
+          </div>
+          <div class="score-viewer-zoom" role="group" aria-label="Preview zoom">
+            <button type="button" data-zoom-out aria-label="Zoom out">−</button>
+            <button type="button" data-zoom-in aria-label="Zoom in">+</button>
+            <button type="button" data-zoom-reset>Fit to view</button>
+            <output data-zoom-status aria-live="polite"></output>
+          </div>
+        </div>
+        <div class="score-viewer-viewport" tabindex="0" role="region" aria-label="Enlarged score preview; scroll to explore when zoomed in">
+          <img class="score-viewer-image" alt="">
+        </div>
+      </dialog>
+    {% endif %}
+  {% endwith %}
+{% endblock %}
+
+{% block extra_scripts %}
+  {% if composition.score_previews.all %}
+    <script src="{% static 'js/score-previews.js' %}" defer></script>
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,13 @@
+{% extends "errors/base.html" %}
+
+{% block error_title %}Access denied{% endblock %}
+{% block error_code %}403{% endblock %}
+{% block error_heading %}Access denied{% endblock %}
+{% block error_message %}
+  {% if csrf_failure %}
+    <p>We couldn’t verify your form submission. Your message has not been sent.</p>
+    <p>Please return to the form, reload the page and try again.</p>
+  {% else %}
+    <p>Sorry, you don’t have permission to access this page.</p>
+  {% endif %}
+{% endblock %}

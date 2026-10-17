@@ -1,0 +1,72 @@
+{% load static %}
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {% block metadata %}
+  <title>{{ page_title }}</title>
+  <meta name="description" content="{{ meta_description }}">
+  {% if canonical_url %}<link rel="canonical" href="{{ canonical_url }}">{% endif %}
+  {% if noindex %}<meta name="robots" content="noindex, follow">{% endif %}
+  <meta property="og:title" content="{{ page_title }}">
+  <meta property="og:description" content="{{ meta_description }}">
+  {% if canonical_url %}<meta property="og:url" content="{{ canonical_url }}">{% endif %}
+  <meta property="og:type" content="website">
+  {% endblock %}
+  <script src="{% static 'js/theme.js' %}"></script>
+  <script src="{% static 'js/navigation.js' %}" defer></script>
+  <link rel="stylesheet" href="{% static 'css/site.css' %}">
+  {% if json_ld %}<script type="application/ld+json">{{ json_ld|safe }}</script>{% endif %}
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-band">
+    <div class="site-header container">
+      <a class="site-name" href="{% url 'core:home' %}">Thomas Alban</a>
+      <button class="theme-toggle" type="button" aria-label="Light mode" aria-pressed="false" title="Toggle light mode" hidden>
+        <span class="theme-toggle-thumb" aria-hidden="true">
+          <svg class="theme-icon-sun" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" focusable="false">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"></path>
+          </svg>
+          <svg class="theme-icon-moon" viewBox="0 0 24 24" width="22" height="22" fill="currentColor" focusable="false">
+            <path d="M20.8 14.2A9 9 0 0 1 9.8 3.2a9 9 0 1 0 11 11Z"></path>
+          </svg>
+        </span>
+      </button>
+      <button class="menu-toggle" type="button" aria-label="Menu" aria-expanded="false" aria-controls="main-navigation" hidden>
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true" focusable="false">
+          <path class="menu-icon-open" d="M4 6h16M4 12h16M4 18h16"></path>
+          <path class="menu-icon-close" d="m6 6 12 12M6 18 18 6"></path>
+        </svg>
+      </button>
+      <nav id="main-navigation" aria-label="Main navigation">
+        <div class="nav-panel">
+          <ul class="nav-list">
+            <li><a href="{% url 'core:home' %}"{% if active_page == 'home' %} aria-current="page"{% endif %}>Home</a></li>
+            <li><a href="{% url 'compositions:list' %}"{% if active_page == 'compositions' %} aria-current="page"{% endif %}>Compositions</a></li>
+            <li><a href="{% url 'core:about' %}"{% if active_page == 'about' %} aria-current="page"{% endif %}>About</a></li>
+            <li><a href="{% url 'core:contact' %}"{% if active_page == 'contact' %} aria-current="page"{% endif %}>Contact</a></li>
+          </ul>
+        </div>
+      </nav>
+    </div>
+    <div class="header-divider" aria-hidden="true">
+      <svg viewBox="0 0 200 32" width="200" height="32" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" focusable="false">
+        <path d="M2 16C2 5 19 5 19 14C19 23 7 24 7 16C7 7 25 10 41 16C59 23 76 25 88 19C97 14 96 7 91 8C84 9 90 21 100 21C110 21 116 9 109 8C104 7 103 14 112 19C124 25 141 23 159 16C175 10 193 7 193 16C193 24 181 23 181 14C181 5 198 5 198 16"></path>
+        <path d="M21 22C42 28 62 8 79 13M121 13C138 8 158 28 179 22"></path>
+      </svg>
+    </div>
+  </header>
+  <main id="main-content" class="container" tabindex="-1">
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="site-band footer-band">
+    <div class="site-footer container">
+      <p>Thomas Alban</p>
+    </div>
+  </footer>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

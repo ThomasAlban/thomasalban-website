@@ -1,0 +1,62 @@
+# Paid resources: review pricing before applying. No preDeployCommand: disk is absent there.
+services:
+  - type: web
+    name: thomasalban
+    runtime: docker
+    plan: starter
+    numInstances: 1
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /healthz/
+    autoDeployTrigger: checksPass
+    disk:
+      name: website-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: ADMIN_GATE_USERNAME
+        sync: false
+      - key: ADMIN_GATE_PASSWORD
+        sync: false
+      - key: PORT
+        value: '10000'
+      - key: DJANGO_DEBUG
+        value: 'false'
+      - key: DJANGO_SECRET_KEY
+        sync: false
+      - key: DJANGO_ALLOWED_HOSTS
+        sync: false
+      - key: DJANGO_SITE_URL
+        value: https://thomasalban.com
+      - key: DJANGO_CSRF_TRUSTED_ORIGINS
+        value: https://thomasalban.com,https://www.thomasalban.com
+      - key: DJANGO_DATABASE_PATH
+        value: /var/data/db.sqlite3
+      - key: DJANGO_MEDIA_ROOT
+        value: /var/data/media
+      - key: DJANGO_TRUST_PROXY_HEADERS
+        value: 'true'
+      - key: DJANGO_SECURE_HSTS_SECONDS
+        value: '0'
+      - key: DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS
+        value: 'false'
+      - key: DJANGO_SECURE_HSTS_PRELOAD
+        value: 'false'
+      - key: DJANGO_EMAIL_BACKEND
+        value: django.core.mail.backends.smtp.EmailBackend
+      - key: DJANGO_DEFAULT_FROM_EMAIL
+        sync: false
+      - key: DJANGO_ENQUIRY_EMAIL
+        sync: false
+      - key: DJANGO_EMAIL_HOST
+        sync: false
+      - key: DJANGO_EMAIL_PORT
+        value: '587'
+      - key: DJANGO_EMAIL_HOST_USER
+        sync: false
+      - key: DJANGO_EMAIL_HOST_PASSWORD
+        sync: false
+      - key: DJANGO_EMAIL_USE_TLS
+        value: 'true'
+      - key: DJANGO_EMAIL_USE_SSL
+        value: 'false'

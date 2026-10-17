@@ -1,0 +1,8 @@
+{% extends "errors/base.html" %}
+
+{% block error_title %}Bad request{% endblock %}
+{% block error_code %}400{% endblock %}
+{% block error_heading %}We couldn’t open that page{% endblock %}
+{% block error_message %}
+  <p>Sorry, the website couldn’t understand this request. Please check the address or return to the homepage.</p>
+{% endblock %}
