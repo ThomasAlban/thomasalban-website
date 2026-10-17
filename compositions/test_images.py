@@ -123,15 +123,53 @@ class CompositionImageTests(TestCase):
             self.assertNotContains(response, later.image.url)
             self.assertNotContains(response, 'id="composition-images"')
         response = self.client.get('/')
-        self.assertNotContains(response, first.image.url)
+        self.assertContains(response, first.image.url, count=1)
         self.assertNotContains(response, later.image.url)
         response = self.client.get(self.work.get_absolute_url())
         self.assertContains(response, first.image.url, count=1)
         self.assertContains(response, later.image.url, count=1)
 
+    def test_home_featured_and_recent_use_first_ordered_photo(self):
+        self.work.is_featured = True
+        self.work.save()
+        self.make_image(0, image='')
+        first = self.make_image(1, alt_text='Choir & conductor')
+        later = self.make_image(2)
+        response = self.client.get('/')
+        self.assertContains(response, first.image.url, count=2)
+        self.assertContains(response, 'alt="Choir &amp; conductor"', count=2)
+        self.assertContains(response, 'loading="lazy" decoding="async"', count=2)
+        self.assertNotContains(response, later.image.url)
+        content = response.content.decode()
+        featured, recent = content.split('aria-labelledby="recent-title"')
+        self.assertIn(first.image.url, featured)
+        self.assertIn(first.image.url, recent)
+
+    def test_home_thumbnail_queries_do_not_grow_with_recent_compositions(self):
+        self.work.is_featured = True
+        self.work.save()
+        self.make_image()
+        with self.assertNumQueries(5):
+            self.client.get('/')
+        for number in range(5):
+            work = Composition.objects.create(
+                title=f'Other {number}', slug=f'other-{number}', is_published=True,
+            )
+            CompositionImage.objects.create(
+                composition=work, image=f'composition_images/other-{number}.jpg',
+                alt_text='Other premiere',
+            )
+        with self.assertNumQueries(5):
+            response = self.client.get('/')
+        for work in response.context['recent_works']:
+            self.assertEqual(len(work.thumbnail_images), 1)
+
     def test_no_gallery_or_card_image_without_images(self):
         self.assertNotContains(self.client.get(self.work.get_absolute_url()), 'id="composition-images"')
         self.assertNotContains(self.client.get('/compositions/'), 'work-card-image')
+        self.work.is_featured = True
+        self.work.save()
+        self.assertNotContains(self.client.get('/'), 'class="work-card-image"')
 
     def test_draft_images_are_not_exposed(self):
         image = self.make_image()

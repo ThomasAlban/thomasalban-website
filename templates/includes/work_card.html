@@ -11,10 +11,6 @@
     {% endif %}
   </div>
   {% if show_thumbnail %}
-    {% for photo in work.thumbnail_images %}
-      <a class="work-card-image" href="{% url 'compositions:detail' slug=work.slug %}" aria-label="View {{ work.title }}">
-        <img src="{{ photo.image.url }}" alt="{{ photo.alt_text }}" loading="lazy" decoding="async" width="128" height="96">
-      </a>
-    {% endfor %}
+    {% include 'includes/work_thumbnail.html' with work=work only %}
   {% endif %}
 </article>

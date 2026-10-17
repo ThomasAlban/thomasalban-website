@@ -1,9 +1,10 @@
+from django.db.models import Prefetch
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
-from compositions.models import Composition
+from compositions.models import Composition, CompositionImage
 
 from .enquiries import deliver_enquiry
 from .forms import EnquiryForm
@@ -13,7 +14,10 @@ from .seo import absolute_url, page_context, person_schema
 
 @require_http_methods(['GET'])
 def home(request):
-    works = Composition.objects.published()
+    works = Composition.objects.published().prefetch_related(Prefetch(
+        'images', queryset=CompositionImage.objects.exclude(image='')[:1],
+        to_attr='thumbnail_images',
+    ))
     featured = works.filter(slug='nunc-dimittis').first() or works.filter(is_featured=True).first()
     context = page_context(
         'Thomas Alban - Composer',

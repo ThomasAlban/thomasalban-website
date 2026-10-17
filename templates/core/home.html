@@ -9,10 +9,15 @@
   </section>
   {% if featured %}
     <section class="section featured" aria-labelledby="featured-title">
-      <p class="eyebrow">Featured</p>
-      <h2 id="featured-title"><a href="{% url 'compositions:detail' slug=featured.slug %}">{{ featured.title }}</a></h2>
-      {% if featured.instrumentation %}<p class="lead">For {{ featured.instrumentation }}</p>{% endif %}
-      <a href="{% url 'compositions:detail' slug=featured.slug %}">View {{ featured.title }}</a>
+      <div class="work-card-with-image">
+        <div class="work-card-content">
+          <p class="eyebrow">Featured</p>
+          <h2 id="featured-title"><a href="{% url 'compositions:detail' slug=featured.slug %}">{{ featured.title }}</a></h2>
+          {% if featured.instrumentation %}<p class="lead">For {{ featured.instrumentation }}</p>{% endif %}
+          <a href="{% url 'compositions:detail' slug=featured.slug %}">View {{ featured.title }}</a>
+        </div>
+        {% include 'includes/work_thumbnail.html' with work=featured only %}
+      </div>
     </section>
   {% endif %}
   <section class="section" aria-labelledby="recent-title">
@@ -22,7 +27,7 @@
     </div>
     <div class="work-grid">
       {% for work in recent_works %}
-        {% include 'includes/work_card.html' with work=work only %}
+        {% include 'includes/work_card.html' with work=work show_thumbnail=True only %}
       {% empty %}
         <p class="empty-state">Compositions will be added here as they become available.</p>
       {% endfor %}
