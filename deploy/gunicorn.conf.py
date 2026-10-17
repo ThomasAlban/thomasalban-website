@@ -12,3 +12,5 @@ secure_scheme_headers = {}
 accesslog = None  # nginx logs without query strings.
 errorlog = '-'
 capture_output = True
+# No management socket is needed; the inherited root HOME is not app-writable.
+control_socket_disable = True

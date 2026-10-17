@@ -1,6 +1,7 @@
 """Deployment probes use temporary media and the test database only."""
 
 from pathlib import Path
+import runpy
 from tempfile import TemporaryDirectory
 from unittest.mock import Mock, patch
 
@@ -62,6 +63,16 @@ class AdminGateTests(SimpleTestCase):
         self.assertIn('PermissionError (errno 13)', message)
         self.assertNotIn('private operating system detail', message)
         self.assertNotIn('/private/path', message)
+
+    def test_gunicorn_disables_unused_home_directory_control_socket(self):
+        from gunicorn.app.wsgiapp import WSGIApplication
+
+        config_path = Path(__file__).resolve().parent.parent / 'deploy/gunicorn.conf.py'
+        config = runpy.run_path(str(config_path))
+        self.assertIs(config['control_socket_disable'], True)
+        with patch('sys.argv', ['gunicorn', '--config', str(config_path), 'config.wsgi:application']):
+            application = WSGIApplication()
+        self.assertTrue(application.cfg.control_socket_disable)
 
     def test_proxy_strips_authorization_and_gate_cannot_be_bypassed_by_regex(self):
         root = Path(__file__).resolve().parent.parent
