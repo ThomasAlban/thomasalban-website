@@ -136,6 +136,8 @@ main { flex: 1; min-height: 60vh; padding-bottom: 4rem; }
 .work-card-content { min-width: 0; }
 .work-card-image { flex: 0 0 clamp(4rem, 12vw, 8rem); }
 .work-card-image img { width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; }
+.featured .work-card-with-image { align-items: center; gap: clamp(1.5rem, 4vw, 3rem); }
+.featured .work-card-image { flex: 0 0 34%; max-width: 24rem; }
 .work-card-image img, .composition-image img { box-shadow: 0 .75rem 1.5rem #0005; }
 .card-meta { display: flex; flex-wrap: wrap; gap: .5rem 1.5rem; margin: 1rem 0 0; font-size: .9rem; color: var(--muted); }
 .card-meta div { display: flex; gap: .5rem; }
@@ -294,6 +296,8 @@ body.score-viewer-open { overflow: hidden; }
 .listening-links li { margin-block: .5rem; }
 
 @media (max-width: 48rem) {
+  .featured .work-card-with-image { flex-direction: column; align-items: stretch; }
+  .featured .work-card-image { flex: none; width: 100%; }
   .about-layout-with-photos { grid-template-columns: minmax(0, 1fr); }
   .about-photos { padding-top: 0; max-width: 22rem; }
   .work-layout { grid-template-columns: minmax(0, 1fr); }
