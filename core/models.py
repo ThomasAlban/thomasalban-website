@@ -1,6 +1,6 @@
 from django.db import models
 
-from .markdown import render_biography
+from .markdown import render_prose
 from .validators import IMAGE_HELP_TEXT, validate_image_extension
 
 
@@ -22,7 +22,7 @@ class Biography(models.Model):
 
     @property
     def rendered_body(self):
-        return render_biography(self.body)
+        return render_prose(self.body)
 
     def __str__(self):
         return 'Biography'

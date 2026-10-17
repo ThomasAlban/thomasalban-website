@@ -21,7 +21,7 @@
           </dl>
         </section>
       {% endif %}
-      {% if composition.description %}<div class="prose work-description">{{ composition.description|linebreaks }}</div>{% endif %}
+      {% if composition.description %}<div class="prose work-description">{{ composition.rendered_description }}</div>{% endif %}
       {% with images=composition.images.all %}
         {% if images %}
           <section class="composition-images" id="composition-images" aria-label="Composition photos">

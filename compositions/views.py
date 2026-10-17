@@ -1,7 +1,10 @@
+from html import unescape
+
 from django.db.models import F, Prefetch, Q
 from django.db.models.functions import Lower
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.html import strip_tags
 from django.views.decorators.http import require_http_methods
 
 from core.enquiries import deliver_enquiry
@@ -90,7 +93,9 @@ def detail(request, slug):
     if composition.instrumentation:
         schema['musicalInstrumentation'] = composition.instrumentation
     if composition.description:
-        schema['description'] = composition.description
+        schema['description'] = ' '.join(
+            unescape(strip_tags(composition.rendered_description)).split(),
+        )
     title = f'{composition.title} - Thomas Alban | Score & Recording'
     context = page_context(
         title,

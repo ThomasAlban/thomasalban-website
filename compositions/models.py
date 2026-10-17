@@ -1,6 +1,7 @@
 from django.core.validators import FileExtensionValidator, MaxValueValidator, MinValueValidator
 from django.db import models
 
+from core.markdown import render_prose
 from core.validators import IMAGE_HELP_TEXT, validate_image_extension
 
 from .listening import (
@@ -17,7 +18,14 @@ class CompositionQuerySet(models.QuerySet):
 class Composition(models.Model):
     title = models.CharField(max_length=200)
     slug = models.SlugField(max_length=200, unique=True)
-    description = models.TextField(blank=True)
+    description = models.TextField(
+        blank=True,
+        help_text=(
+            'Markdown supported: *italics*, **bold**, [link text](https://example.com) '
+            'or [compositions](/compositions/). Use blank lines between paragraphs '
+            'and start list items with "- ". Raw HTML and images are not supported.'
+        ),
+    )
     year_composed = models.PositiveSmallIntegerField(
         blank=True,
         null=True,
@@ -59,6 +67,10 @@ class Composition(models.Model):
     def get_absolute_url(self):
         from django.urls import reverse
         return reverse('compositions:detail', kwargs={'slug': self.slug})
+
+    @property
+    def rendered_description(self):
+        return render_prose(self.description)
 
     @property
     def safe_listening_links(self):

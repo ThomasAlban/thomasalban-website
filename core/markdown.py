@@ -3,13 +3,13 @@ from markdown_it import MarkdownIt
 import nh3
 
 
-# Only the formatting needed for biography prose; raw HTML and images are disabled.
+# Only simple prose formatting; raw HTML and images are disabled.
 _parser = MarkdownIt('commonmark', {'html': False}).disable([
     'image', 'heading', 'lheading', 'blockquote', 'code', 'fence', 'hr', 'backticks',
 ])
 
 
-def render_biography(text):
+def render_prose(text):
     html = _parser.render(text)
     cleaned = nh3.clean(
         html,
