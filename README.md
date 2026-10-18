@@ -4,6 +4,17 @@ Server-rendered Django composer website with a published-only catalogue, ordered
 score previews, admin editing, SEO metadata and shared contact/score enquiries.
 Requirements and implementation priorities are in `AGENTS.md`.
 
+## Analytics
+
+Umami Cloud page-view analytics loads on public pages only when `DEBUG=False`
+and the request hostname is `thomasalban.com` or `www.thomasalban.com`. Local
+development, the Render hostname and Django admin do not load the script.
+The public website ID is in `templates/base.html`; no API key or Render setting
+is needed. No custom events or enquiry form contents are sent by this integration.
+Umami still receives standard page metadata; avoid personal details in URLs.
+Document the provider in privacy information and review applicable consent/opt-out
+requirements. After deployment, verify a visit in Umami with an unblocked browser.
+
 ## Local setup
 
 Bootstrap the repository-local uv binary with Python 3.14, then:

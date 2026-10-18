@@ -17,6 +17,9 @@
   <script src="{% static 'js/theme.js' %}"></script>
   <script src="{% static 'js/navigation.js' %}" defer></script>
   <link rel="stylesheet" href="{% static 'css/site.css' %}">
+  {% if umami_enabled %}
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="6d94f97d-a9d8-4352-8a59-155757c5cb0b" data-domains="thomasalban.com,www.thomasalban.com"></script>
+  {% endif %}
   {% if json_ld %}<script type="application/ld+json">{{ json_ld|safe }}</script>{% endif %}
 </head>
 <body>
