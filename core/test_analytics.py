@@ -32,6 +32,14 @@ class AnalyticsTests(TestCase):
             self.assertNotContains(response, self.script)
 
     @override_settings(DEBUG=False)
+    def test_invalid_host_returns_400_without_analytics(self):
+        for url in ('/', '/healthz/'):
+            with self.subTest(url=url):
+                response = self.client.get(url, HTTP_HOST='evil.example', secure=True)
+                self.assertEqual(response.status_code, 400)
+                self.assertNotContains(response, self.script, status_code=400)
+
+    @override_settings(DEBUG=False)
     def test_admin_login_never_loads_tracker(self):
         response = self.client.get('/admin/login/', HTTP_HOST='thomasalban.com', secure=True)
         self.assertNotContains(response, self.script)
