@@ -88,6 +88,16 @@ class PublicPageTests(TestCase):
             with self.subTest(path=path):
                 self.assertEqual(self.client.get(path).status_code, 200)
 
+    def test_homepage_composer_label_and_introduction(self):
+        response = self.client.get('/')
+        self.assertContains(response, '<p class="hero-role">Composer</p>', html=True)
+        self.assertContains(
+            response,
+            "I'm a British composer studying Music at Clare College, Cambridge. "
+            "On this website you can find my compositions!",
+        )
+        self.assertNotContains(response, '3rd year Music student')
+
     def test_shared_theme_toggle_and_early_script(self):
         work = self.make_work()
         for path in ('/', '/compositions/', '/about/', '/contact/',
