@@ -13,6 +13,16 @@
   <meta property="og:description" content="{{ meta_description }}">
   {% if canonical_url %}<meta property="og:url" content="{{ canonical_url }}">{% endif %}
   <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Thomas Alban">
+  {% if social_image_url %}
+  <meta property="og:image" content="{{ social_image_url }}">
+  <meta property="og:image:alt" content="{{ social_image_alt }}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ page_title }}">
+  <meta name="twitter:description" content="{{ meta_description }}">
+  <meta name="twitter:image" content="{{ social_image_url }}">
+  <meta name="twitter:image:alt" content="{{ social_image_alt }}">
+  {% endif %}
   {% endblock %}
   <script src="{% static 'js/theme.js' %}"></script>
   <script src="{% static 'js/navigation.js' %}" defer></script>

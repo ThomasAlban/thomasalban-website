@@ -67,6 +67,7 @@ class Composition(models.Model):
     is_published = models.BooleanField(default=False, db_index=True)
     is_featured = models.BooleanField(default=False)
     seo_description = models.CharField(max_length=300, blank=True)
+    updated_at = models.DateTimeField(null=True, blank=True, editable=False)
 
     objects = CompositionQuerySet.as_manager()
 

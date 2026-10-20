@@ -126,7 +126,7 @@ class CompositionImageTests(TestCase):
         self.assertContains(response, first.image.url, count=1)
         self.assertNotContains(response, later.image.url)
         response = self.client.get(self.work.get_absolute_url())
-        self.assertContains(response, first.image.url, count=1)
+        self.assertContains(response, f'src="{first.image.url}"', count=1)
         self.assertContains(response, later.image.url, count=1)
 
     def test_home_featured_and_recent_use_first_ordered_photo(self):
@@ -149,7 +149,7 @@ class CompositionImageTests(TestCase):
         self.work.is_featured = True
         self.work.save()
         self.make_image()
-        with self.assertNumQueries(5):
+        with self.assertNumQueries(6):
             self.client.get('/')
         for number in range(5):
             work = Composition.objects.create(
@@ -159,7 +159,7 @@ class CompositionImageTests(TestCase):
                 composition=work, image=f'composition_images/other-{number}.jpg',
                 alt_text='Other premiere',
             )
-        with self.assertNumQueries(5):
+        with self.assertNumQueries(6):
             response = self.client.get('/')
         for work in response.context['recent_works']:
             self.assertEqual(len(work.thumbnail_images), 1)

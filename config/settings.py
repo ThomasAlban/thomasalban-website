@@ -6,7 +6,8 @@ from pathlib import Path
 import re
 from urllib.parse import urlsplit
 
-from django.core.exceptions import ImproperlyConfigured
+from django.core.exceptions import ImproperlyConfigured, ValidationError
+from django.core.validators import URLValidator
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -172,6 +173,20 @@ CSRF_TRUSTED_ORIGINS = [
     validated_origin(origin, 'DJANGO_CSRF_TRUSTED_ORIGINS')
     for origin in CSRF_TRUSTED_ORIGINS
 ]
+
+# Owner-confirmed official identity profiles only; empty by default.
+PERSON_SAME_AS = [
+    url.strip() for url in os.environ.get('DJANGO_PERSON_SAME_AS', '').split(',')
+    if url.strip()
+]
+for profile_url in PERSON_SAME_AS:
+    try:
+        URLValidator(schemes=['https', 'http'])(profile_url)
+        parsed_profile = urlsplit(profile_url)
+        if parsed_profile.username is not None or parsed_profile.password is not None:
+            raise ValidationError('Credentials are not allowed.')
+    except (ValidationError, ValueError):
+        raise ImproperlyConfigured('DJANGO_PERSON_SAME_AS must contain comma-separated HTTP(S) profile URLs without credentials.') from None
 
 # Missing Turnstile keys fail closed on submission, not during image builds.
 TURNSTILE_ENABLED = env_bool('DJANGO_TURNSTILE_ENABLED', not DEBUG)

@@ -82,6 +82,9 @@ main { flex: 1; min-height: 60vh; padding-bottom: 4rem; }
 .hero { padding-block: clamp(2.5rem, 6vw, 3.5rem); max-width: 52rem; }
 .hero h1 { font-size: clamp(3.25rem, 8vw, 5rem); margin-bottom: .35em; }
 .hero-role { font-size: .85rem; letter-spacing: .13em; text-transform: uppercase; color: var(--muted); margin-bottom: 1.5rem; }
+.breadcrumbs ol { display: flex; flex-wrap: wrap; gap: .35rem .65rem; list-style: none; padding: 0; margin: 0 0 1rem; font-size: .9rem; }
+.breadcrumbs li { min-width: 0; }
+.breadcrumbs li > span[aria-hidden] { margin-right: .35rem; color: var(--muted); }
 .page-heading { padding-block: clamp(1.75rem, 4vw, 2.75rem); max-width: 55rem; }
 .error-page { max-width: 46rem; padding-block: clamp(3rem, 9vw, 7rem); }
 .error-page h1 { margin-bottom: 1.25rem; }

@@ -9,7 +9,7 @@ from compositions.models import Composition, CompositionImage
 from .enquiries import deliver_enquiry
 from .forms import EnquiryForm
 from .models import Biography, BiographyPhoto
-from .seo import absolute_url, page_context, person_schema
+from .seo import absolute_url, homepage_schema, page_context, person_schema
 
 
 @require_http_methods(['GET'])
@@ -22,7 +22,8 @@ def home(request):
     context = page_context(
         'Thomas Alban - Composer',
         'Discover music by composer Thomas Alban. Explore compositions, recordings and score previews, and enquire about scores.',
-        reverse('core:home'), 'home', schema=person_schema(),
+        reverse('core:home'), 'home', schema=homepage_schema(),
+        image=BiographyPhoto.objects.exclude(image='').first(),
     )
     context.update(featured=featured, recent_works=works[:6])
     return render(request, 'core/home.html', context)
@@ -33,6 +34,7 @@ def about(request):
     context = page_context(
         'About - Thomas Alban', 'Thomas Alban, composer. Explore his music and get in touch.',
         reverse('core:about'), 'about', schema=person_schema(),
+        image=BiographyPhoto.objects.exclude(image='').first(),
     )
     context['biography'] = Biography.objects.first()
     context['photos'] = BiographyPhoto.objects.all()

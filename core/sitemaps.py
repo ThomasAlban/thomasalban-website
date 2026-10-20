@@ -27,5 +27,8 @@ class PublicPageSitemap(CanonicalSitemap):
 
 class CompositionSitemap(CanonicalSitemap):
 
+    def lastmod(self, item):
+        return item.updated_at
+
     def items(self):
         return Composition.objects.published()

@@ -96,11 +96,32 @@ def detail(request, slug):
         schema['description'] = ' '.join(
             unescape(strip_tags(composition.rendered_description)).split(),
         )
-    title = f'{composition.title} - Thomas Alban | Score & Recording'
+    breadcrumbs = [
+        {'name': 'Home', 'url': reverse('core:home')},
+        {'name': 'Compositions', 'url': reverse('compositions:list')},
+        {'name': composition.title, 'url': composition.get_absolute_url()},
+    ]
+    breadcrumb_schema = {
+        '@type': 'BreadcrumbList',
+        'itemListElement': [
+            {'@type': 'ListItem', 'position': position, 'name': crumb['name'],
+             'item': absolute_url(crumb['url'])}
+            for position, crumb in enumerate(breadcrumbs, start=1)
+        ],
+    }
+    schema.pop('@context')
+    schema = {'@context': 'https://schema.org', '@graph': [schema, breadcrumb_schema]}
+    title = f'{composition.title} - Thomas Alban'
+    instrumentation = f' for {composition.instrumentation}' if composition.instrumentation else ''
+    description = (
+        f'{composition.title} by Thomas Alban. '
+        f'Explore this composition{instrumentation} and enquire about the score.'
+    )
+    image = next((image for image in composition.images.all() if image.image), None)
     context = page_context(
         title,
-        composition.seo_description or f'{composition.title}, a composition by Thomas Alban. Discover recordings, score previews and enquire about the score.',
-        composition.get_absolute_url(), 'compositions', schema=schema,
+        composition.seo_description or description,
+        composition.get_absolute_url(), 'compositions', schema=schema, image=image,
     )
-    context.update(composition=composition, form=form, sent=sent)
+    context.update(composition=composition, form=form, sent=sent, breadcrumbs=breadcrumbs)
     return render(request, 'compositions/detail.html', context)

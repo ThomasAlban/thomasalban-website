@@ -267,7 +267,7 @@ class PublicPageTests(TestCase):
         self.assertTemplateUsed(response, 'compositions/detail.html')
         self.assertEqual(response.context['composition'], work)
         self.assertContains(response, f'<h1>{work.title}</h1>', html=True)
-        schema = json.loads(self.parse(response).schemas[0])
+        schema = json.loads(self.parse(response).schemas[0])['@graph'][0]
         self.assertEqual(schema['composer']['name'], 'Thomas Alban')
         self.assertEqual(self.client.get('/compositions/missing/').status_code, 404)
 
@@ -298,11 +298,11 @@ class PublicPageTests(TestCase):
         self.assertEqual(self.client.get('/').context['featured'], nunc)
         response = self.client.get(nunc.get_absolute_url())
         self.assertContains(response,
-                            '<title>Nunc dimittis - Thomas Alban | Score &amp; Recording</title>',
+                            '<title>Nunc dimittis - Thomas Alban</title>',
                             html=True)
         self.assertNotContains(response, 'Choir of Clare College')
         self.assertContains(response, recording.url)
-        schema = json.loads(self.parse(response).schemas[0])
+        schema = json.loads(self.parse(response).schemas[0])['@graph'][0]
         self.assertEqual(schema['@type'], 'MusicComposition')
         self.assertEqual(schema['composer']['name'], 'Thomas Alban')
 
@@ -552,7 +552,7 @@ class PublicPageTests(TestCase):
         self.assertEqual(len(page.schemas), 1)
         self.assertNotIn('<', page.schemas[0])
         self.assertIn('\\u003c/script>', page.schemas[0])
-        schema = json.loads(page.schemas[0])
+        schema = json.loads(page.schemas[0])['@graph'][0]
         self.assertEqual(schema['name'], title)
         self.assertEqual(schema['musicalInstrumentation'], '<b>SATB</b>')
         self.assertFalse(any(tag == 'img' and attrs.get('onerror')
@@ -587,6 +587,7 @@ class PublicPageTests(TestCase):
                              if tag == 'link' and attrs.get('rel') == 'canonical']
                 self.assertEqual(canonical, ['https://composer.example' + path])
                 self.assertIn(('meta', {'property': 'og:url', 'content': canonical[0]}), page.tags)
+                self.assertIn(('meta', {'property': 'og:site_name', 'content': 'Thomas Alban'}), page.tags)
                 self.assertNotContains(response, 'content="noindex, follow"')
                 titles.add(response.context['page_title'])
                 descriptions.add(response.context['meta_description'])
@@ -594,10 +595,21 @@ class PublicPageTests(TestCase):
         self.assertEqual(len(descriptions), 5)
         self.assertContains(self.client.get(work.get_absolute_url()),
                             'content="A specific search description."')
-        for path in ('/', '/about/'):
-            schema = json.loads(self.parse(self.client.get(path)).schemas[0])
-            self.assertEqual(schema['@type'], 'Person')
-            self.assertEqual(schema['name'], 'Thomas Alban')
+        schema = json.loads(self.parse(self.client.get('/')).schemas[0])
+        self.assertEqual(schema['@context'], 'https://schema.org')
+        website, person = schema['@graph']
+        self.assertEqual(website, {
+            '@type': 'WebSite',
+            '@id': 'https://composer.example/#website',
+            'name': 'Thomas Alban',
+            'url': 'https://composer.example/',
+        })
+        self.assertEqual(person['@type'], 'Person')
+        self.assertEqual(person['name'], 'Thomas Alban')
+        self.assertEqual(person['@id'], 'https://composer.example/#composer')
+        about_schema = json.loads(self.parse(self.client.get('/about/')).schemas[0])
+        self.assertEqual(about_schema['@type'], 'Person')
+        self.assertEqual(about_schema['name'], 'Thomas Alban')
 
     def test_all_filtered_catalogue_urls_are_noindex_with_clean_canonical(self):
         self.make_work(category='Choral')

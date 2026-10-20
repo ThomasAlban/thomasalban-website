@@ -47,6 +47,38 @@ structured data, sitemap locations and the robots sitemap link use this value.
 allows search crawlers (including Google, Bing and OAI-SearchBot), excluding admin.
 Filtered catalogue pages remain crawlable so their noindex directive and clean canonical can be read.
 
+## Search and social metadata
+
+The homepage retains "Thomas Alban - Composer", its WebSite/Person graph and site
+name "Thomas Alban". Composition titles use "<title> - Thomas Alban", without
+promising recordings that may not exist. Default descriptions include title,
+composer and instrumentation when present; **SEO description** in admin overrides
+that default. Visible composition breadcrumbs match BreadcrumbList structured data.
+
+Optionally set `DJANGO_PERSON_SAME_AS` to a comma-separated list of owner-confirmed
+public official profile URLs. Leave it empty until verified: no profiles are seeded
+or inferred from recording links or contact copy. Only HTTP(S) URLs without credentials
+are accepted. This adds Person sameAs on Home and About; syntax validation cannot
+establish ownership. Restart the service after changing configuration.
+
+Home and About use the first nonempty biography photo in position/ID order for
+Open Graph and Twitter image cards. Composition pages use their first nonempty
+composition image, never a score preview or another composition's image. Image URLs
+are absolute (relative storage URLs use DJANGO_SITE_URL; absolute CDN URLs are
+preserved), with the existing alt text. No image means no image/card tags. No new
+assets, cropping or resizing are generated; verify image rights, public availability,
+size and provider-compatible format (JPEG/PNG are safest) in social preview tools.
+
+Composition sitemap lastmod uses nullable updated_at, maintained when a composition
+or its images, previews or listening links actually change through ordinary model
+saves/deletes, including admin inlines. No-op saves do not advance it. Existing rows
+remain NULL after migration and omit lastmod until a subsequent content change;
+do not mass-save or backfill dates just for SEO. Static pages deliberately omit
+lastmod because their full content is not tracked by one model. Bulk create/update,
+QuerySet.update, raw SQL/fixtures and replacing a file in storage bypass tracking:
+importers must maintain accurate timestamps explicitly (or clear to NULL if unknown).
+These dates describe content edits, not composition years or premiere dates.
+
 ## Error-page previews
 
 Keep `DJANGO_DEBUG=true` in `.env` and start the local development server using
@@ -98,10 +130,10 @@ The premiered-date migration preserves values previously stored as release dates
 review those values in admin if they do not represent the actual premiere.
 Score previews and composition images are edited inline, sorted by position then
 ID, and require descriptive alt text. Composition images allow optional captions
-or photographer credits. Images appear only on the individual composition page,
+or photographer credits. Images appear on the individual composition page,
 below its description without a visible gallery heading; portrait images are
-height-limited and retain their aspect ratio. They do not appear on homepage or
-catalogue cards. Pillow validates image uploads in
+height-limited and retain their aspect ratio. The first nonempty image in position/ID
+order also appears on homepage and catalogue cards and in composition social metadata. Pillow validates image uploads in
 Django forms. Deleting a composition deletes its related image/preview records;
 uploaded files are not automatically removed by Django.
 
@@ -199,7 +231,7 @@ local databases, generated assets and uploads are ignored by Git.
 
 Publish real works through the admin; no compositions or factual biography are
 seeded. Publish *Nunc dimittis* with slug `nunc-dimittis` to prioritize it on the
-homepage and obtain its required SEO title. Add the confirmed Clare College
+homepage. All composition SEO titles include the composition name and Thomas Alban. Add the confirmed Clare College
 recording URL and its verified credit in the Listening link inline (Choir of Clare
 College, Cambridge, only for that recording). Add separate verified credits for
 any other recordings. The homepage otherwise selects a featured published composition.

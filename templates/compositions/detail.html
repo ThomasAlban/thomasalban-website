@@ -3,7 +3,13 @@
 
 {% block content %}
   <header class="page-heading">
-    <a class="back-link" href="{% url 'compositions:list' %}">All compositions</a>
+    <nav aria-label="Breadcrumb" class="breadcrumbs">
+      <ol role="list">
+        {% for crumb in breadcrumbs %}
+          <li>{% if not forloop.first %}<span aria-hidden="true">/</span> {% endif %}{% if forloop.last %}<span aria-current="page">{{ crumb.name }}</span>{% else %}<a href="{{ crumb.url }}">{{ crumb.name }}</a>{% endif %}</li>
+        {% endfor %}
+      </ol>
+    </nav>
     <h1>{{ composition.title }}</h1>
     <a href="#score-enquiry">Enquire about the score</a>
   </header>

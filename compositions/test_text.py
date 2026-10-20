@@ -85,7 +85,7 @@ class CompositionTextTests(TestCase):
             composition=self.composition, label='Recording', url='https://example.com',
         )
         response = self.render_text('Sung text goes here.')
-        content = response.content.decode()
+        content = response.content.decode().split('<main', 1)[1]
         self.assertLess(content.index('Description before sung text.'), content.index(image.image.url))
         self.assertLess(content.index(image.image.url), content.index('id="text-title"'))
         self.assertLess(content.index('Sung text goes here.'), content.index('id="recording-title"'))
