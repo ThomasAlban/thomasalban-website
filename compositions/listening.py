@@ -79,7 +79,7 @@ def listening_embed_url(url):
     elif host == 'open.spotify.com':
         match = re.fullmatch(r'/(track|album|playlist|episode|show)/([A-Za-z0-9]+)', parts.path)
         if match:
-            return f'https://open.spotify.com/embed/{match[1]}/{match[2]}'
+            return f'https://open.spotify.com/embed/{match[1]}/{match[2]}?theme=0'
 
     if video_id and re.fullmatch(r'[A-Za-z0-9_-]{11}', video_id):
         return f'https://www.youtube-nocookie.com/embed/{video_id}'

@@ -447,7 +447,7 @@ class PublicPageTests(TestCase):
         )
         for provider, url, embed_url, player_class in [
             ('Spotify', 'https://open.spotify.com/track/123abc',
-             'https://open.spotify.com/embed/track/123abc', 'spotify-player'),
+             'https://open.spotify.com/embed/track/123abc?theme=0', 'spotify-player'),
             ('YouTube', 'https://youtu.be/dQw4w9WgXcQ?autoplay=1',
              'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ', 'video-player'),
         ]:
@@ -472,6 +472,12 @@ class PublicPageTests(TestCase):
                     'allow': 'encrypted-media; fullscreen; picture-in-picture',
                     'allowfullscreen': None,
                 })
+                wrappers = [attrs for tag, attrs in page.tags
+                            if tag == 'div' and 'recording-embed' in attrs.get('class', '').split()]
+                self.assertEqual(wrappers, [{
+                    'class': 'recording-embed recording-embed-spotify'
+                    if provider == 'Spotify' else 'recording-embed',
+                }])
                 self.assertNotContains(response, 'data-recording-embed')
                 self.assertNotContains(response, 'Load Primary')
                 self.assertNotContains(response, '/static/js/listening.js')

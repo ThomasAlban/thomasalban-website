@@ -67,7 +67,7 @@
               {% for link in links %}
                 {% with embed_url=link.embed_url %}
                   {% if link.is_primary and embed_url %}
-                    <div class="recording-embed">
+                    <div class="recording-embed{% if 'open.spotify.com' in embed_url %} recording-embed-spotify{% endif %}">
                       <iframe src="{{ embed_url }}" title="{{ composition.title }} - {{ link.label }}" class="{% if 'open.spotify.com' in embed_url %}spotify-player{% else %}video-player{% endif %}" loading="eager" referrerpolicy="strict-origin-when-cross-origin" allow="encrypted-media; fullscreen; picture-in-picture" allowfullscreen></iframe>
                     </div>
                   {% endif %}

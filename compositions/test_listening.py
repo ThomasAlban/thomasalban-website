@@ -51,7 +51,7 @@ class EmbedTests(SimpleTestCase):
     def test_recognized_spotify_urls(self):
         for kind in ['track', 'album', 'playlist', 'episode', 'show']:
             url = f'http://open.spotify.com/{kind}/AbC123?si=test'
-            self.assertEqual(ListeningLink(url=url).embed_url, f'https://open.spotify.com/embed/{kind}/AbC123')
+            self.assertEqual(ListeningLink(url=url).embed_url, f'https://open.spotify.com/embed/{kind}/AbC123?theme=0')
 
     def test_unsafe_or_unrecognized_urls_are_not_embedded(self):
         urls = [

@@ -304,7 +304,8 @@ body.score-viewer-open { overflow: hidden; }
 .recording-embed { margin-block: 1.5rem; padding: 1rem; background: var(--surface); }
 .recording-embed iframe { display: block; width: 100%; border: 0; }
 .video-player { aspect-ratio: 16 / 9; }
-.spotify-player { height: 352px; }
+.recording-embed-spotify { padding: 0; background: transparent; }
+.spotify-player { height: 352px; border-radius: 12px; }
 .listening-links { padding-left: 1.25rem; }
 .listening-links li { margin-block: .5rem; }
 
