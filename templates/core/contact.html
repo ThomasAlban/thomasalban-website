@@ -10,7 +10,7 @@
     {% if composition %}
       <h1>Score enquiry</h1>
     {% else %}
-      <h1 class="drawn-heading drawn-heading-contact">Contact</h1>
+      <h1 class="drawn-heading drawn-heading-contact"><span class="drawn-heading-text">Contact</span></h1>
     {% endif %}
     {% if composition %}
       <p class="lead">Enquire about the score for <a href="{% url 'compositions:detail' slug=composition.slug %}">{{ composition.title }}</a>.</p>

@@ -190,7 +190,8 @@ class PublicPageTests(TestCase):
                 heading_id = ' id="home-title"' if path == '/' else ''
                 self.assertContains(
                     response,
-                    f'<h1{heading_id} class="drawn-heading drawn-heading-{name}">{label}</h1>',
+                    f'<h1{heading_id} class="drawn-heading drawn-heading-{name}">'
+                    f'<span class="drawn-heading-text">{label}</span></h1>',
                     html=True,
                 )
 
