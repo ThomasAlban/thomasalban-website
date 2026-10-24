@@ -1,16 +1,11 @@
 """Keep decorative heading masks small, transparent and sharp on Retina displays."""
 
-from base64 import b64decode
-from io import BytesIO
 from pathlib import Path
-from unittest.mock import patch
 
 from django.conf import settings
 from django.contrib.staticfiles import finders
 from django.test import SimpleTestCase
 from PIL import Image
-
-from core.templatetags.headings import heading_mask
 
 
 class HeadingAssetTests(SimpleTestCase):
@@ -32,23 +27,5 @@ class HeadingAssetTests(SimpleTestCase):
                     alpha = image.convert('RGBA').getchannel('A')
                     self.assertEqual(alpha.getextrema(), (0, 255))
                     self.assertGreater(len(alpha.getcolors()), 2)
-                uri = heading_mask(asset.stem)
-                self.assertTrue(uri.startswith('data:image/png;base64,'))
-                data = b64decode(uri.split(',', 1)[1], validate=True)
-                self.assertEqual(data, asset.read_bytes())
-                with Image.open(BytesIO(data)) as embedded:
-                    self.assertEqual(embedded.size, size)
-        css = (settings.BASE_DIR / 'static/css/site.css').read_text()
-        self.assertNotIn('../images/headings/', css)
-
-    def test_heading_mask_rejects_unknown_names_and_paths(self):
-        for name in ('missing', '../about', '/tmp/about', 'about.png'):
-            with self.subTest(name=name), self.assertRaises(ValueError):
-                heading_mask(name)
-
-    def test_heading_mask_reads_each_asset_only_once_per_process(self):
-        heading_mask.cache_clear()
-        self.addCleanup(heading_mask.cache_clear)
-        expected = heading_mask('about')
-        with patch.object(Path, 'read_bytes', side_effect=AssertionError('Uncached read')):
-            self.assertEqual(heading_mask('about'), expected)
+                css = (settings.BASE_DIR / 'static/css/site.css').read_text()
+                self.assertIn(f'url("../images/headings/{filename}")', css)

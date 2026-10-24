@@ -1,11 +1,15 @@
 {% extends 'base.html' %}
-{% load headings %}
+{% load static %}
+
+{% block heading_preload %}
+  <link rel="preload" as="image" href="{% static 'images/headings/about.png' %}">
+{% endblock %}
 
 {% block content %}
   <div class="about-layout{% if photos %} about-layout-with-photos{% endif %}">
     <div>
       <header class="page-heading">
-        <h1 class="drawn-heading drawn-heading-about" style="--heading-mask: url('{% heading_mask 'about' %}')"><span class="drawn-heading-text">About</span></h1>
+        <h1 class="drawn-heading drawn-heading-about">About</h1>
       </header>
       <div class="prose">
         {% if biography.body %}

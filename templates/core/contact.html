@@ -1,12 +1,16 @@
 {% extends 'base.html' %}
-{% load headings %}
+{% load static %}
+
+{% block heading_preload %}
+  {% if not composition %}<link rel="preload" as="image" href="{% static 'images/headings/contact.png' %}">{% endif %}
+{% endblock %}
 
 {% block content %}
   <header class="page-heading">
     {% if composition %}
       <h1>Score enquiry</h1>
     {% else %}
-      <h1 class="drawn-heading drawn-heading-contact" style="--heading-mask: url('{% heading_mask 'contact' %}')"><span class="drawn-heading-text">Contact</span></h1>
+      <h1 class="drawn-heading drawn-heading-contact">Contact</h1>
     {% endif %}
     {% if composition %}
       <p class="lead">Enquire about the score for <a href="{% url 'compositions:detail' slug=composition.slug %}">{{ composition.title }}</a>.</p>

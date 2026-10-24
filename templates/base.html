@@ -7,6 +7,7 @@
   <link rel="icon" href="{% static 'images/icons/favicon.ico' %}" type="image/x-icon" sizes="16x16 32x32 48x48">
   <link rel="icon" href="{% static 'images/icons/favicon-96.png' %}" type="image/png" sizes="96x96">
   <link rel="apple-touch-icon" href="{% static 'images/icons/apple-touch-icon.png' %}" sizes="180x180">
+  {% block heading_preload %}{% endblock %}
   {% block metadata %}
   <title>{{ page_title }}</title>
   <meta name="description" content="{{ meta_description }}">
