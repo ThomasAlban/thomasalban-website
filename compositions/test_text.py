@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.contrib.auth import get_user_model
 from django.test import RequestFactory, TestCase, override_settings
 
 from .models import Composition, CompositionImage, ListeningLink
@@ -112,6 +113,7 @@ class CompositionTextTests(TestCase):
 
     def test_admin_exposes_optional_fields_and_markdown_guidance(self):
         request = RequestFactory().get('/admin/compositions/composition/add/')
+        request.user = get_user_model()(is_active=True, is_staff=True, is_superuser=True)
         form = admin.site._registry[Composition].get_form(request)()
         self.assertFalse(form.fields['text'].required)
         self.assertIn('Markdown supported', form.fields['text'].help_text)

@@ -15,6 +15,17 @@ class CompositionQuerySet(models.QuerySet):
         return self.filter(is_published=True)
 
 
+class Category(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+
+    class Meta:
+        ordering = ['name']
+        verbose_name_plural = 'categories'
+
+    def __str__(self):
+        return self.name
+
+
 class Composition(models.Model):
     title = models.CharField(max_length=200)
     slug = models.SlugField(max_length=200, unique=True)
@@ -46,7 +57,9 @@ class Composition(models.Model):
         validators=[MinValueValidator(1), MaxValueValidator(9999)],
     )
     premiered_date = models.DateField(blank=True, null=True)
-    category = models.CharField(max_length=100, blank=True, db_index=True)
+    categories = models.ManyToManyField(
+        Category, blank=True, related_name='compositions', through='CompositionCategory',
+    )
     instrumentation = models.CharField(max_length=200, blank=True)
     duration_seconds = models.PositiveIntegerField(
         blank=True, null=True, validators=[MinValueValidator(1)],
@@ -84,6 +97,10 @@ class Composition(models.Model):
         return reverse('compositions:detail', kwargs={'slug': self.slug})
 
     @property
+    def categories_display(self):
+        return ', '.join(membership.category.name for membership in self.category_memberships.all())
+
+    @property
     def rendered_description(self):
         return render_prose(self.description)
 
@@ -105,6 +122,36 @@ class Composition(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class CompositionCategoryManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().select_related('category')
+
+
+class CompositionCategory(models.Model):
+    composition = models.ForeignKey(
+        Composition, on_delete=models.CASCADE, related_name='category_memberships',
+    )
+    category = models.ForeignKey(Category, on_delete=models.CASCADE)
+    position = models.PositiveIntegerField(
+        default=0, help_text='Lower numbers appear first in this composition\'s category list.',
+    )
+
+    objects = CompositionCategoryManager()
+
+    class Meta:
+        ordering = ['position', 'pk']
+        verbose_name = 'composition category'
+        verbose_name_plural = 'composition categories'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['composition', 'category'], name='unique_composition_category',
+            ),
+        ]
+
+    def __str__(self):
+        return str(self.category)
 
 
 class ListeningLink(models.Model):

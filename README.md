@@ -120,7 +120,14 @@ access, is in `core/test_error_pages.py`:
 
 Compositions default to unpublished. Use `Composition.objects.published()` for public
 queries (admin retains access to drafts). Slugs are unique and editable; the admin
-suggests them from titles. Categories are free text until a taxonomy is agreed.
+suggests them from titles. Categories are reusable names managed in admin; each
+composition can have zero, one or multiple categories. Add them in the composition's
+Categories inline and set each membership's position. Lower positions appear first,
+with ties ordered by membership ID. Homepage, catalogue and detail pages show a
+comma-separated list in this per-composition order, not alphabetically. Catalogue
+category filter choices remain alphabetical, and filtering matches any assigned category. The category migration preserves
+each existing nonblank category exactly as the composition's sole category; blank
+categories remain unassigned.
 Optional metadata can be left blank. Public durations are approximate, rounded to
 the nearest 30 seconds (ties upward, minimum c. 0:30), e.g. c. 1:00, c. 1:30,
 c. 2:00. Admin duration inputs step by 30 seconds; existing stored seconds and

@@ -149,7 +149,8 @@ class CompositionImageTests(TestCase):
         self.work.is_featured = True
         self.work.save()
         self.make_image()
-        with self.assertNumQueries(6):
+        # Categories and thumbnails each use a fixed prefetch query.
+        with self.assertNumQueries(8):
             self.client.get('/')
         for number in range(5):
             work = Composition.objects.create(
@@ -159,7 +160,8 @@ class CompositionImageTests(TestCase):
                 composition=work, image=f'composition_images/other-{number}.jpg',
                 alt_text='Other premiere',
             )
-        with self.assertNumQueries(6):
+        # Categories and thumbnails each use a fixed prefetch query.
+        with self.assertNumQueries(8):
             response = self.client.get('/')
         for work in response.context['recent_works']:
             self.assertEqual(len(work.thumbnail_images), 1)
@@ -186,7 +188,8 @@ class CompositionImageTests(TestCase):
             composition=other, image='composition_images/other.jpg', alt_text='Other premiere',
         )
         self.make_image(2)
-        with self.assertNumQueries(3):
+        # Filter choices, compositions, categories, and thumbnails.
+        with self.assertNumQueries(4):
             response = self.client.get('/compositions/')
         for work in response.context['works']:
             self.assertEqual(len(work.thumbnail_images), 1)

@@ -3,10 +3,10 @@
 Bulk writes bypass save signals; importers must explicitly maintain updated_at.
 """
 
-from django.db.models.signals import post_delete, post_save, pre_save
+from django.db.models.signals import m2m_changed, post_delete, post_save, pre_delete, pre_save
 from django.utils import timezone
 
-from .models import Composition, CompositionImage, ListeningLink, ScorePreview
+from .models import Category, Composition, CompositionCategory, CompositionImage, ListeningLink, ScorePreview
 
 
 def remember_change(sender, instance, raw=False, using='default', update_fields=None, **kwargs):
@@ -44,7 +44,33 @@ def record_deletion(sender, instance, using='default', **kwargs):
     Composition.objects.using(using).filter(pk=instance.composition_id).update(updated_at=timezone.now())
 
 
-for model in (Composition, CompositionImage, ListeningLink, ScorePreview):
+def record_category_change(sender, instance, raw=False, using='default', **kwargs):
+    if not raw and getattr(instance, '_seo_changed', False):
+        instance.compositions.using(using).update(updated_at=timezone.now())
+
+
+def record_category_deletion(sender, instance, using='default', **kwargs):
+    instance.compositions.using(using).update(updated_at=timezone.now())
+
+
+def record_membership_change(sender, instance, action, reverse, pk_set, using='default', **kwargs):
+    if action == 'pre_clear':
+        if reverse:
+            instance.compositions.using(using).update(updated_at=timezone.now())
+        elif instance.categories.using(using).exists():
+            Composition.objects.using(using).filter(pk=instance.pk).update(updated_at=timezone.now())
+    elif action in ('post_add', 'post_remove') and pk_set:
+        ids = pk_set if reverse else [instance.pk]
+        Composition.objects.using(using).filter(pk__in=ids).update(updated_at=timezone.now())
+
+
+pre_save.connect(remember_change, sender=Category)
+post_save.connect(record_category_change, sender=Category)
+pre_delete.connect(record_category_deletion, sender=Category)
+m2m_changed.connect(record_membership_change, sender=Composition.categories.through)
+
+
+for model in (Composition, CompositionCategory, CompositionImage, ListeningLink, ScorePreview):
     pre_save.connect(remember_change, sender=model)
     post_save.connect(record_change, sender=model)
     if model is not Composition:

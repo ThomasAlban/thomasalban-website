@@ -1,12 +1,13 @@
 from io import BytesIO
 
 from django.contrib import admin
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile, UploadedFile
 from django.db import IntegrityError, connection, transaction
 from django.db.migrations.executor import MigrationExecutor
 from django.forms.models import inlineformset_factory
-from django.test import SimpleTestCase, TestCase, TransactionTestCase
+from django.test import RequestFactory, SimpleTestCase, TestCase, TransactionTestCase
 
 from .admin_forms import ListeningLinkInlineForm, ListeningLinkInlineFormSet
 from .listening import MAX_AUDIO_FILE_SIZE, listening_embed_url
@@ -22,7 +23,9 @@ class AudioTests(TestCase):
                 work.full_clean()
         field = Composition._meta.get_field('audio_file')
         self.assertEqual(field.upload_to, 'audio/%Y/%m/')
-        self.assertIn('audio_file', admin.site._registry[Composition].get_form(None).base_fields)
+        request = RequestFactory().get('/admin/compositions/composition/add/')
+        request.user = get_user_model()(is_active=True, is_staff=True, is_superuser=True)
+        self.assertIn('audio_file', admin.site._registry[Composition].get_form(request).base_fields)
 
     def test_invalid_extension_and_size(self):
         for filename, size in [('a.exe', 1), ('a.mp3', MAX_AUDIO_FILE_SIZE + 1)]:
@@ -136,7 +139,9 @@ class ListeningLinkTests(TestCase):
         link.full_clean()
         self.assertEqual(link.credit, '')
         self.assertEqual(self.work.audio_credit, '')
-        self.assertIn('audio_credit', admin.site._registry[Composition].get_form(None).base_fields)
+        request = RequestFactory().get('/admin/compositions/composition/add/')
+        request.user = get_user_model()(is_active=True, is_staff=True, is_superuser=True)
+        self.assertIn('audio_credit', admin.site._registry[Composition].get_form(request).base_fields)
         inline = next(inline for inline in admin.site._registry[Composition].inlines
                       if inline.model == ListeningLink)
         self.assertIn('credit', inline.fields)

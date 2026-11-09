@@ -3,22 +3,27 @@ from datetime import date
 from django.test import TestCase
 from django.urls import reverse
 
-from .models import Composition
+from .models import Category, Composition
 
 
 class CatalogueTests(TestCase):
     def setUp(self):
         self.url = reverse('compositions:list')
+        self.choral = Category.objects.create(name='Choral')
+        self.chamber = Category.objects.create(name='Chamber')
+        self.hidden = Category.objects.create(name='Hidden')
         self.alpha = Composition.objects.create(
-            title='alpha', slug='alpha', category='Choral', instrumentation='SATB choir',
+            title='alpha', slug='alpha', instrumentation='SATB choir',
             year_composed=2020, premiered_date=date(2024, 1, 1),
             duration_seconds=240, is_published=True,
         )
+        self.alpha.categories.add(self.choral)
         self.beta = Composition.objects.create(
-            title='Beta', slug='beta', category='Chamber', instrumentation='Piano and violin',
+            title='Beta', slug='beta', instrumentation='Piano and violin',
             year_composed=2025, premiered_date=date(2023, 1, 1),
             duration_seconds=420, is_published=True,
         )
+        self.beta.categories.add(self.chamber)
         self.undated = Composition.objects.create(
             title='Undated', slug='undated', year_composed=2020, is_published=True,
         )
@@ -26,8 +31,9 @@ class CatalogueTests(TestCase):
             title='Unknown', slug='unknown', is_published=True,
         )
         self.draft = Composition.objects.create(
-            title='Draft choir', slug='draft', category='Hidden', year_composed=2030,
+            title='Draft choir', slug='draft', year_composed=2030,
         )
+        self.draft.categories.add(self.hidden)
 
     def test_search_matches_title_category_and_instrumentation(self):
         for query, expected in [
@@ -39,6 +45,52 @@ class CatalogueTests(TestCase):
                 self.assertEqual(list(response.context['works']), expected)
                 self.assertContains(response, 'Matching compositions')
                 self.assertContains(response, 'Clear filters')
+
+    def test_multi_category_composition_matches_either_category_filter(self):
+        self.alpha.categories.add(self.chamber)
+        for category, expected in [
+            ('Choral', [self.alpha]), ('Chamber', [self.alpha, self.beta]),
+        ]:
+            with self.subTest(category=category):
+                response = self.client.get(self.url, {'category': category})
+                self.assertEqual(list(response.context['works']), expected)
+                self.assertContains(response, f'value="{category}" selected')
+                self.assertContains(response, 'Choral, Chamber')
+
+    def test_search_returns_each_composition_once_when_multiple_categories_match(self):
+        self.alpha.categories.add(self.chamber)
+        for query, expected in [
+            ('ch', [self.alpha, self.beta]), ('alpha', [self.alpha]),
+            ('choir', [self.alpha]),
+        ]:
+            with self.subTest(query=query):
+                response = self.client.get(self.url, {'q': query})
+                self.assertEqual(list(response.context['works']), expected)
+                self.assertContains(
+                    response, f'<h3><a href="{self.alpha.get_absolute_url()}"', count=1,
+                )
+
+    def test_search_can_match_one_category_while_filter_matches_another(self):
+        self.alpha.categories.add(self.chamber)
+        response = self.client.get(self.url, {'q': 'Choral', 'category': 'Chamber'})
+        self.assertEqual(list(response.context['works']), [self.alpha])
+
+    def test_category_choices_are_unique_sorted_and_published_only(self):
+        self.alpha.categories.add(self.chamber)
+        self.draft.categories.add(self.choral)
+        Category.objects.create(name='Unused')
+        response = self.client.get(self.url)
+        self.assertEqual(response.context['categories'], ['Chamber', 'Choral'])
+        self.assertEqual(response.context['filter_form'].fields['category'].choices, [
+            ('', 'All categories'), ('Chamber', 'Chamber'), ('Choral', 'Choral'),
+        ])
+        self.assertNotContains(response, 'Hidden')
+        self.assertNotContains(response, 'Unused')
+        for category in ('Hidden', 'Unused'):
+            with self.subTest(category=category):
+                response = self.client.get(self.url, {'category': category})
+                self.assertIn('category', response.context['filter_form'].errors)
+                self.assertNotIn(self.draft, response.context['works'])
 
     def test_search_empty_state_and_selected_value(self):
         response = self.client.get(self.url, {'q': 'missing'})

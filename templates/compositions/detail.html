@@ -15,11 +15,11 @@
   </header>
   <div class="work-layout">
     <div>
-      {% if composition.category or composition.instrumentation or composition.duration_display or composition.year_composed or composition.premiered_date %}
+      {% if composition.categories_display or composition.instrumentation or composition.duration_display or composition.year_composed or composition.premiered_date %}
         <section aria-labelledby="details-title">
           <h2 id="details-title">About</h2>
           <dl class="work-meta">
-            {% if composition.category %}<div><dt>Category</dt><dd>{{ composition.category }}</dd></div>{% endif %}
+            {% if composition.categories_display %}<div><dt>Categories</dt><dd>{{ composition.categories_display }}</dd></div>{% endif %}
             {% if composition.instrumentation %}<div><dt>Instrumentation</dt><dd>{{ composition.instrumentation }}</dd></div>{% endif %}
             {% if composition.duration_display %}<div><dt>Duration</dt><dd>{{ composition.duration_display }}</dd></div>{% endif %}
             {% if composition.year_composed %}<div><dt>Composed</dt><dd>{{ composition.year_composed }}</dd></div>{% endif %}

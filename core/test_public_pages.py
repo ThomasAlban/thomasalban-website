@@ -11,7 +11,9 @@ from django.core import mail
 from django.test import Client, TestCase, override_settings
 from django.utils.html import escape
 
-from compositions.models import Composition, ListeningLink, ScorePreview
+from compositions.models import (
+    Category, Composition, CompositionCategory, ListeningLink, ScorePreview,
+)
 from core.enquiries import ERROR_MESSAGE, SESSION_KEY, SHARED_LIMIT_MESSAGE, SHORT_WINDOW_LIMIT
 from core.models import EnquiryBudget
 from core.test_mail_backend import ACCEPTED_MAILERS
@@ -53,10 +55,16 @@ class PageParser(HTMLParser):
     ENQUIRY_EMAIL='enquiries@example.com',
 )
 class PublicPageTests(TestCase):
-    def make_work(self, slug='test-work', **kwargs):
+    def make_work(self, slug='test-work', categories=(), **kwargs):
         data = {'title': slug.replace('-', ' ').title(), 'is_published': True}
         data.update(kwargs)
-        return Composition.objects.create(slug=slug, **data)
+        work = Composition.objects.create(slug=slug, **data)
+        for position, name in enumerate(categories):
+            CompositionCategory.objects.create(
+                composition=work, category=Category.objects.get_or_create(name=name)[0],
+                position=position,
+            )
+        return work
 
     def parse(self, response):
         return PageParser(response.content.decode())
@@ -265,7 +273,7 @@ class PublicPageTests(TestCase):
                             html=True)
 
     def test_public_copy_uses_compositions_not_works(self):
-        work = self.make_work('test-composition', category='Choral')
+        work = self.make_work('test-composition', categories=('Choral',))
         for path in ('/', '/about/', '/contact/', '/compositions/',
                      '/compositions/?category=Choral', work.get_absolute_url()):
             response = self.client.get(path)
@@ -290,7 +298,7 @@ class PublicPageTests(TestCase):
     def test_drafts_are_absent_from_home_catalogue_and_detail(self):
         draft = self.make_work('nunc-dimittis', title='Secret unpublished work',
                                is_published=False, is_featured=True,
-                               category='Secret category', premiered_date=date(2030, 1, 1))
+                               categories=('Secret category',), premiered_date=date(2030, 1, 1))
         published = self.make_work('public-work', is_featured=True)
         home = self.client.get('/')
         self.assertEqual(home.context['featured'], published)
@@ -393,11 +401,11 @@ class PublicPageTests(TestCase):
         self.assertNotContains(self.client.get('/'), unknown_first.get_absolute_url())
 
     def test_category_choices_and_combined_filters(self):
-        choral = self.make_work('choral', category='Choral', duration_seconds=300)
-        self.make_work('instrumental', category='Instrumental', duration_seconds=300)
-        self.make_work('short-choral', category='Choral', duration_seconds=299)
+        choral = self.make_work('choral', categories=('Choral',), duration_seconds=300)
+        self.make_work('instrumental', categories=('Instrumental',), duration_seconds=300)
+        self.make_work('short-choral', categories=('Choral',), duration_seconds=299)
         self.make_work('uncategorised', duration_seconds=300)
-        self.make_work('draft-category', category='Draft only', is_published=False)
+        self.make_work('draft-category', categories=('Draft only',), is_published=False)
         response = self.client.get('/compositions/', {'category': 'Choral', 'duration': 'medium'})
         self.assert_works(response, [choral])
         self.assertEqual(response.context['categories'], ['Choral', 'Instrumental'])
@@ -417,8 +425,8 @@ class PublicPageTests(TestCase):
                           [unknown] + [works[value] for value in (601, 600, 300, 299, 1)])
 
     def test_invalid_filter_choices_show_errors_without_partial_filtering(self):
-        first = self.make_work('first', category='Choral', duration_seconds=300)
-        second = self.make_work('second', category='Instrumental', duration_seconds=601)
+        first = self.make_work('first', categories=('Choral',), duration_seconds=300)
+        second = self.make_work('second', categories=('Instrumental',), duration_seconds=601)
         for data, error_field in [
             ({'category': 'Not a category', 'duration': 'medium'}, 'category'),
             ({'category': 'Choral', 'duration': 'invalid'}, 'duration'),
@@ -431,7 +439,7 @@ class PublicPageTests(TestCase):
                 self.assertContains(response, 'Select a valid choice.')
 
     def test_valid_filters_with_no_matches_show_empty_state(self):
-        self.make_work(category='Choral', duration_seconds=299)
+        self.make_work(categories=('Choral',), duration_seconds=299)
         response = self.client.get('/compositions/', {'category': 'Choral', 'duration': 'long'})
         self.assert_works(response, [])
         self.assertContains(response, 'No compositions match these filters.')
@@ -517,10 +525,51 @@ class PublicPageTests(TestCase):
         self.assertNotContains(response, '<iframe')
         self.assertNotContains(response, link.label)
 
+    def test_categories_follow_each_compositions_chosen_order_on_public_pages(self):
+        work = self.make_work(categories=('Choral', 'Vocal'), is_featured=True)
+        # Choose a non-alphabetical order that also differs from membership ID order.
+        work.category_memberships.filter(category__name='Choral').update(position=20)
+        work.category_memberships.filter(category__name='Vocal').update(position=5)
+        other = self.make_work('other', categories=('Choral', 'Vocal'))
+        for composition, display in ((work, 'Vocal, Choral'), (other, 'Choral, Vocal')):
+            with self.subTest(composition=composition.slug):
+                self.assertEqual(composition.categories_display, display)
+                detail = self.client.get(composition.get_absolute_url())
+                self.assertContains(
+                    detail, f'<div><dt>Categories</dt><dd>{display}</dd></div>',
+                    html=True,
+                )
+                self.assertNotContains(detail, '<dt>Category</dt>')
+                for path in ('/', '/compositions/'):
+                    with self.subTest(path=path):
+                        self.assertContains(
+                            self.client.get(path), f'<p class="eyebrow">{display}</p>',
+                            count=1, html=True,
+                        )
+        catalogue = self.client.get('/compositions/')
+        self.assertEqual(catalogue.context['categories'], ['Choral', 'Vocal'])
+
+    def test_category_names_are_escaped_on_detail_catalogue_and_home(self):
+        category = '<img src=x onerror=alert(1)> & "Choral"'
+        work = self.make_work(categories=(category, 'Vocal'))
+        display = f'{category}, Vocal'
+        for path in (work.get_absolute_url(), '/compositions/', '/'):
+            with self.subTest(path=path):
+                response = self.client.get(path)
+                self.assertContains(response, escape(display))
+                self.assertNotContains(response, category)
+                self.assertFalse(any(tag == 'img' and attrs.get('onerror')
+                                     for tag, attrs in self.parse(response).tags))
+        response = self.client.get('/compositions/', {'category': category})
+        self.assert_works(response, [work])
+        self.assertContains(response, f'value="{escape(category)}" selected')
+        self.assertNotContains(response, category)
+
     def test_missing_metadata_recording_and_previews_are_omitted(self):
         work = self.make_work()
+        self.assertEqual(work.categories_display, '')
         response = self.client.get(work.get_absolute_url())
-        for text in ('About the composition', '<dt>Category</dt>', '<dt>Instrumentation</dt>',
+        for text in ('About the composition', '<dt>Categories</dt>', '<dt>Instrumentation</dt>',
                      '<dt>Duration</dt>', '<dt>Composed</dt>', '<dt>Premiered</dt>',
                      'id="recording-title"', 'Choir of Clare College',
                      'id="previews-title"', 'id="score-viewer"', '/static/js/score-previews.js', 'None'):
@@ -532,10 +581,11 @@ class PublicPageTests(TestCase):
         for path in ('/', '/compositions/'):
             page = self.client.get(path)
             self.assertNotContains(page, 'card-meta')
+            self.assertNotContains(page, '<p class="eyebrow">')
             self.assertNotContains(page, '<dt>Duration</dt>')
 
     def test_present_metadata_and_ordered_preview_alt_text(self):
-        work = self.make_work(category='Choral', instrumentation='SATB',
+        work = self.make_work(categories=('Choral',), instrumentation='SATB',
                               duration_seconds=301, year_composed=2025,
                               premiered_date=date(2026, 1, 2), description='A test description.')
         later = ScorePreview.objects.create(composition=work, position=2,
@@ -634,7 +684,7 @@ class PublicPageTests(TestCase):
         self.assertEqual(about_schema['name'], 'Thomas Alban')
 
     def test_all_filtered_catalogue_urls_are_noindex_with_clean_canonical(self):
-        self.make_work(category='Choral')
+        self.make_work(categories=('Choral',))
         for query in ({'category': 'Choral'}, {'duration': 'short'},
                       {'category': 'invalid'}, {'category': '', 'duration': ''},
                       {'utm_source': 'search'}):

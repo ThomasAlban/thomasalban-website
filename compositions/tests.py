@@ -1,8 +1,9 @@
 from datetime import date
 
 from django.contrib import admin
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from django.test import TestCase
+from django.test import RequestFactory, TestCase
 
 from .models import Composition, ScorePreview
 
@@ -71,13 +72,15 @@ class CompositionTests(TestCase):
 
     def test_admin_duration_accepts_and_preserves_arbitrary_positive_seconds(self):
         model_admin = admin.site._registry[Composition]
+        request = RequestFactory().get('/admin/compositions/composition/add/')
+        request.user = get_user_model()(is_active=True, is_staff=True, is_superuser=True)
         field = model_admin.formfield_for_dbfield(
-            Composition._meta.get_field('duration_seconds'), request=None,
+            Composition._meta.get_field('duration_seconds'), request=request,
         )
         self.assertEqual(field.widget.attrs['step'], 1)
         self.assertEqual(field.widget.attrs['min'], 1)
         self.assertIn('stored value is unchanged', field.help_text)
-        form_class = model_admin.get_form(None)
+        form_class = model_admin.get_form(request)
         work = self.make_work(duration_seconds=44)
         for seconds in (1, 44, 301):
             with self.subTest(seconds=seconds):
@@ -96,7 +99,7 @@ class CompositionTests(TestCase):
 
     def test_admin_has_score_preview_inline(self):
         model_admin = admin.site._registry[Composition]
-        self.assertEqual(model_admin.inlines[0].model, ScorePreview)
+        self.assertIn(ScorePreview, [inline.model for inline in model_admin.inlines])
 
 
 class ScorePreviewTests(TestCase):

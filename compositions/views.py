@@ -12,13 +12,13 @@ from core.forms import EnquiryForm
 from core.seo import absolute_url, page_context, person_schema
 
 from .forms import CatalogueFilterForm
-from .models import Composition, CompositionImage
+from .models import Composition, CompositionCategory, CompositionImage
 
 
 @require_http_methods(['GET'])
 def catalogue(request):
     works = Composition.objects.published()
-    filter_options = list(works.order_by().values_list('category', 'year_composed').distinct())
+    filter_options = list(works.order_by().values_list('categories__name', 'year_composed').distinct())
     categories = sorted({category for category, year in filter_options if category})
     years = sorted({year for category, year in filter_options if year is not None}, reverse=True)
     form = CatalogueFilterForm(request.GET, categories=categories, years=years)
@@ -33,13 +33,13 @@ def catalogue(request):
         sort = form.cleaned_data['sort'] or 'premiered_date'
         if query:
             works = works.filter(
-                Q(title__icontains=query) | Q(category__icontains=query)
+                Q(title__icontains=query) | Q(categories__name__icontains=query)
                 | Q(instrumentation__icontains=query),
             )
         if selected_years:
             works = works.filter(year_composed__in=selected_years)
         if category:
-            works = works.filter(category=category)
+            works = works.filter(categories__name=category)
         if duration == 'short':
             works = works.filter(duration_seconds__lt=300)
         elif duration == 'medium':
@@ -58,10 +58,12 @@ def catalogue(request):
         'Explore compositions by Thomas Alban, with recordings, score previews and score enquiries.',
         reverse('compositions:list'), 'compositions', noindex=bool(request.GET),
     )
-    works = works.prefetch_related(Prefetch(
-        'images', queryset=CompositionImage.objects.exclude(image='')[:1],
-        to_attr='thumbnail_images',
-    ))
+    works = works.distinct().prefetch_related(
+        Prefetch('category_memberships',
+                 queryset=CompositionCategory.objects.select_related('category')),
+        Prefetch('images', queryset=CompositionImage.objects.exclude(image='')[:1],
+                 to_attr='thumbnail_images'),
+    )
     context.update(works=works, categories=categories, filter_form=form,
                    category=category, duration=duration,
                    has_filters=bool(category or duration or query or selected_years),
@@ -73,6 +75,8 @@ def catalogue(request):
 def detail(request, slug):
     composition = get_object_or_404(
         Composition.objects.published().prefetch_related(
+            Prefetch('category_memberships',
+                     queryset=CompositionCategory.objects.select_related('category')),
             'score_previews', 'listening_links', 'images',
         ), slug=slug,
     )
